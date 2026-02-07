@@ -45,6 +45,9 @@ def process_account(account: Account, rules):
     """Fetch new mail for *account* and evaluate rules."""
     logger.info("Checking %s (%s@%s:%s)", account.name, account.imap_user, account.imap_host, account.imap_port)
 
+    # Expire cached objects so we always read the latest notification formats
+    db.session.expire_all()
+
     try:
         messages = fetch_new_messages(
             host=account.imap_host,
@@ -64,16 +67,13 @@ def process_account(account: Account, rules):
         db.session.commit()
         return
 
-    if not messages:
-        logger.debug("No new messages for %s", account.name)
-        return
-
     max_uid = account.last_uid
 
+    found = False
     for msg in messages:
+        found = True
         logger.info("  New mail uid=%d from=%s subject=%s", msg.uid, msg.from_address, msg.subject)
 
-        # Evaluate rules in position order – first match wins
         for rule in rules:
             if not rule.enabled:
                 continue
@@ -89,7 +89,6 @@ def process_account(account: Account, rules):
                     logger.warning("  Rule '%s' matched but has no webhook configured", rule.name)
                     break
                 logger.info("  Matched rule '%s' → sending to Discord via '%s'", rule.name, rule.webhook.name)
-                # Render notification format
                 fmt = rule.notification_format
                 if fmt and fmt.template:
                     template_vars = {
@@ -104,15 +103,18 @@ def process_account(account: Account, rules):
                         logger.error("  Format rendering failed: %s", exc)
                         rendered = f"{account.name} {msg.from_address} {msg.subject}"
                 else:
-                    rendered = f"{account.name} {msg.from_address} {msg.subject}"
+                    rendered = (
+                        f"**アカウント:** {account.name}\n"
+                        f"**ルール:** {rule.name}\n"
+                        f"**送信元:** {msg.from_address}\n"
+                        f"**件名:** {msg.subject}"
+                    )
                 try:
                     send_notification(
                         rule.webhook.url,
-                        account_name=account.name,
-                        from_address=msg.from_address,
-                        subject=msg.subject,
-                        rule_name=rule.name,
                         rendered_message=rendered,
+                        rule_name=rule.name,
+                        subject=msg.subject,
                     )
                 except Exception as exc:
                     logger.error("  Discord send failed: %s", exc)
@@ -131,7 +133,10 @@ def process_account(account: Account, rules):
         if msg.uid > max_uid:
             max_uid = msg.uid
 
-    # Persist the high‑water‑mark UID
+    if not found:
+        logger.debug("No new messages for %s", account.name)
+        return
+
     if max_uid > account.last_uid:
         account.last_uid = max_uid
         db.session.commit()
@@ -145,8 +150,8 @@ def run():
         logger.info("Worker started – default interval %ds", DEFAULT_INTERVAL)
 
         while True:
-            # Read worker state from DB
-            state = WorkerState.query.get(1)
+            # Read worker state from DB (SQLAlchemy 2.x compatible)
+            state = db.session.get(WorkerState, 1)
             if state is None:
                 state = WorkerState(id=1, is_running=True, poll_interval=DEFAULT_INTERVAL)
                 db.session.add(state)

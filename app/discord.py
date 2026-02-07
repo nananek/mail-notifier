@@ -11,33 +11,19 @@ TIMEOUT = 10  # seconds
 def send_notification(
     webhook_url: str,
     *,
-    account_name: str,
-    from_address: str,
-    subject: str,
-    rule_name: str,
-    rendered_message: str = None,
+    rendered_message: str,
+    rule_name: str = "",
+    subject: str = "",
 ) -> None:
     """
     Post a rich embed to a Discord webhook.
     Raises on HTTP errors so the caller can log failures.
     """
-    if rendered_message:
-        embed = {
-            "title": "📬 新着メール通知",
-            "color": 0x5865F2,
-            "description": rendered_message,
-        }
-    else:
-        embed = {
-            "title": "📬 新着メール通知",
-            "color": 0x5865F2,
-            "fields": [
-                {"name": "アカウント", "value": account_name, "inline": True},
-                {"name": "ルール", "value": rule_name, "inline": True},
-                {"name": "送信元", "value": from_address, "inline": False},
-                {"name": "件名", "value": subject, "inline": False},
-            ],
-        }
+    embed = {
+        "title": "📬 新着メール通知",
+        "color": 0x5865F2,
+        "description": rendered_message,
+    }
     payload = {"embeds": [embed]}
     resp = requests.post(webhook_url, json=payload, timeout=TIMEOUT)
     resp.raise_for_status()
