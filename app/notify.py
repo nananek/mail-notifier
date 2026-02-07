@@ -57,6 +57,7 @@ def evaluate_and_notify(account, msg):
                 "from_address": msg.from_address,
                 "subject": msg.subject,
                 "rule_name": rule.name,
+                "date": msg.date,
             }
             try:
                 rendered = fmt.template.format(**template_vars)

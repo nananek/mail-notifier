@@ -16,6 +16,7 @@ class MailMessage:
     from_address: str
     to_address: str
     subject: str
+    date: str
 
 
 def decode_header_value(raw: str) -> str:
@@ -105,8 +106,9 @@ def fetch_new_messages(
             from_addr = decode_header_value(msg.get("From", ""))
             to_addr = decode_header_value(msg.get("To", ""))
             subj = decode_header_value(msg.get("Subject", ""))
+            date_str = msg.get("Date", "")
 
-            yield MailMessage(uid=uid, from_address=from_addr, to_address=to_addr, subject=subj)
+            yield MailMessage(uid=uid, from_address=from_addr, to_address=to_addr, subject=subj, date=date_str)
 
         conn.close()
         conn.logout()

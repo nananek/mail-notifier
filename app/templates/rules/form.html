@@ -101,22 +101,11 @@
               <option value="regex" {% if c.match_type == 'regex' %}selected{% endif %}>正規表現</option>
             </select>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-4">
             <input type="text" class="form-control" name="cond_pattern_{{ loop.index0 }}"
-                   value="{{ c.pattern }}" placeholder="パターン"
-                   {% if c.field == 'account' %}disabled{% endif %}>
+                   value="{{ c.pattern }}" placeholder="パターン">
           </div>
-          <div class="col-md-3">
-            <select class="form-select" name="cond_account_{{ loop.index0 }}">
-              <option value="">-- アカウント指定なし --</option>
-              {% for a in accounts %}
-              <option value="{{ a.id }}" {% if c.account_id == a.id %}selected{% endif %}>
-                {{ a.name }}
-              </option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-md-1">
+          <div class="col-md-2">
             <button type="button" class="btn btn-outline-danger btn-remove-cond">
               <i class="bi bi-x-lg"></i>
             </button>
