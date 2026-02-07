@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install Proton Mail Bridge
-RUN wget -O /tmp/protonmail-bridge.deb https://proton.me/download/bridge/protonmail-bridge_3.16.2-1_amd64.deb \
+RUN wget -O /tmp/protonmail-bridge.deb https://proton.me/download/bridge/protonmail-bridge_3.13.0-1_amd64.deb \
     && dpkg -i /tmp/protonmail-bridge.deb || true \
     && apt-get update && apt-get install -f -y \
     && rm /tmp/protonmail-bridge.deb \
@@ -27,4 +27,4 @@ ENV GPG_TTY=/dev/console
 WORKDIR /root
 
 # Entrypoint: Start Bridge in CLI mode
-ENTRYPOINT ["protonmail-bridge", "--cli"]
+ENTRYPOINT ["/usr/lib/protonmail/bridge/proton-bridge", "--cli"]
