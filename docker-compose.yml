@@ -57,7 +57,7 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=mailnotifier
     volumes:
-      - ./volumes/pgdata:/var/lib/postgresql/data
+      - ./volumes/pgdata:/var/lib/postgresql
       - ./volumes/pgsock:/var/run/postgresql
     networks:
       - internal
