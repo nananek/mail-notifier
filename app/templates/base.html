@@ -45,6 +45,12 @@
             <i class="bi bi-gear"></i> メンテナンス
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.path.startswith('/notification_formats') %}active{% endif %}"
+             href="{{ url_for('notification_formats.index') }}">
+            <i class="bi bi-file-text"></i> 通知フォーマット
+          </a>
+        </li>
       </ul>
     </div>
   </div>
