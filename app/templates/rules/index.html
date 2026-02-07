@@ -44,14 +44,15 @@
           {% endif %}
         </td>
         <td>
+          {% if rule.account_id %}
+            <span class="badge bg-secondary text-light me-1">
+              アカウント: {{ rule.account.name }}
+            </span>
+          {% endif %}
           {% for c in rule.conditions %}
             <span class="badge bg-info text-dark me-1">
               {{ c.field }}
-              {% if c.field == 'account' and c.account %}
-                = {{ c.account.name }}
-              {% else %}
-                {{ c.match_type }} "{{ c.pattern }}"
-              {% endif %}
+              {{ c.match_type }} "{{ c.pattern }}"
             </span>
           {% endfor %}
         </td>
