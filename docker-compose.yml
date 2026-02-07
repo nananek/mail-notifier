@@ -16,7 +16,7 @@ services:
       - internal
 
   web:
-    build: .
+    image: ghcr.io/nananek/mail-notifier/app:latest
     command: python entrypoint.py gunicorn -b 0.0.0.0:5000 -w 2 wsgi:app
     environment:
       - DATABASE_URL=postgresql://mailnotifier:${DB_PASSWORD}@/mailnotifier?host=/var/run/postgresql
@@ -31,7 +31,7 @@ services:
     restart: unless-stopped
 
   worker:
-    build: .
+    image: ghcr.io/nananek/mail-notifier/app:latest
     command: python entrypoint.py python worker.py
     environment:
       - DATABASE_URL=postgresql://mailnotifier:${DB_PASSWORD}@/mailnotifier?host=/var/run/postgresql
