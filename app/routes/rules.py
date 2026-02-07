@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from app.extensions import db
-from app.models import Rule, RuleCondition, Account
+from app.models import Rule, RuleCondition, Account, DiscordWebhook
 
 rules_bp = Blueprint("rules", __name__, url_prefix="/rules")
 
@@ -14,10 +14,13 @@ def index():
 @rules_bp.route("/new", methods=["GET", "POST"])
 def create():
     if request.method == "POST":
+        # Handle inline webhook creation
+        webhook_id = _resolve_webhook(request.form)
+
         max_pos = db.session.query(db.func.max(Rule.position)).scalar() or 0
         rule = Rule(
             name=request.form["name"],
-            discord_webhook_url=request.form["discord_webhook_url"],
+            discord_webhook_id=webhook_id,
             position=max_pos + 1,
             enabled="enabled" in request.form,
         )
@@ -31,7 +34,8 @@ def create():
         return redirect(url_for("rules.index"))
 
     accounts = Account.query.order_by(Account.name).all()
-    return render_template("rules/form.html", rule=None, accounts=accounts)
+    webhooks = DiscordWebhook.query.order_by(DiscordWebhook.name).all()
+    return render_template("rules/form.html", rule=None, accounts=accounts, webhooks=webhooks)
 
 
 @rules_bp.route("/<int:rule_id>/edit", methods=["GET", "POST"])
@@ -39,7 +43,7 @@ def edit(rule_id):
     rule = Rule.query.get_or_404(rule_id)
     if request.method == "POST":
         rule.name = request.form["name"]
-        rule.discord_webhook_url = request.form["discord_webhook_url"]
+        rule.discord_webhook_id = _resolve_webhook(request.form)
         rule.enabled = "enabled" in request.form
 
         # Remove old conditions and re-create
@@ -51,7 +55,8 @@ def edit(rule_id):
         return redirect(url_for("rules.index"))
 
     accounts = Account.query.order_by(Account.name).all()
-    return render_template("rules/form.html", rule=rule, accounts=accounts)
+    webhooks = DiscordWebhook.query.order_by(DiscordWebhook.name).all()
+    return render_template("rules/form.html", rule=rule, accounts=accounts, webhooks=webhooks)
 
 
 @rules_bp.route("/<int:rule_id>/delete", methods=["POST"])
@@ -86,6 +91,20 @@ def toggle(rule_id):
         "success",
     )
     return redirect(url_for("rules.index"))
+
+
+def _resolve_webhook(form):
+    """Return webhook ID – create a new webhook if requested."""
+    webhook_id = form.get("discord_webhook_id")
+    if webhook_id == "__new__":
+        wh = DiscordWebhook(
+            name=form["new_webhook_name"],
+            url=form["new_webhook_url"],
+        )
+        db.session.add(wh)
+        db.session.flush()
+        return wh.id
+    return int(webhook_id) if webhook_id else None
 
 
 def _save_conditions(rule, form):

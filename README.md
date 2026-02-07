@@ -44,7 +44,7 @@ Tailscale ネットワーク内から `https://mail-notifier.<tailnet名>` で�
 | `tailscale` | Tailscale Serve でリバースプロキシ |
 | `web` | Flask (Gunicorn) – ルール管理 UI |
 | `worker` | IMAP ポーリングデーモン |
-| `db` | PostgreSQL 16 |
+| `db` | PostgreSQL 18 |
 
 ## Web UI
 

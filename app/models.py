@@ -37,6 +37,30 @@ class Account(db.Model):
         return f"<Account {self.name}>"
 
 
+class DiscordWebhook(db.Model):
+    """Discord webhook destination."""
+
+    __tablename__ = "discord_webhooks"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+    created_at = db.Column(
+        db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    rules = db.relationship("Rule", back_populates="webhook")
+
+    def __repr__(self):
+        return f"<DiscordWebhook {self.name}>"
+
+
 class Rule(db.Model):
     """Notification rule – evaluated in `position` order; first match wins."""
 
@@ -44,7 +68,11 @@ class Rule(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
-    discord_webhook_url = db.Column(db.String(500), nullable=False)
+    discord_webhook_id = db.Column(
+        db.Integer,
+        db.ForeignKey("discord_webhooks.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     position = db.Column(db.Integer, nullable=False, default=0)
     enabled = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(
@@ -57,6 +85,7 @@ class Rule(db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
+    webhook = db.relationship("DiscordWebhook", back_populates="rules")
     conditions = db.relationship(
         "RuleCondition", back_populates="rule", cascade="all, delete-orphan"
     )

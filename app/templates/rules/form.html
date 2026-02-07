@@ -16,11 +16,35 @@
            placeholder="例: 重要メール通知">
   </div>
   <div class="col-md-6">
-    <label for="discord_webhook_url" class="form-label">Discord Webhook URL</label>
-    <input type="url" class="form-control" id="discord_webhook_url"
-           name="discord_webhook_url" required
-           value="{{ rule.discord_webhook_url if rule else '' }}"
-           placeholder="https://discord.com/api/webhooks/...">
+    <label for="discord_webhook_id" class="form-label">通知先 (Discord Webhook)</label>
+    <select class="form-select" id="discord_webhook_id" name="discord_webhook_id" required>
+      <option value="">-- 選択してください --</option>
+      {% for wh in webhooks %}
+      <option value="{{ wh.id }}"
+              {% if rule and rule.discord_webhook_id == wh.id %}selected{% endif %}>
+        {{ wh.name }}
+      </option>
+      {% endfor %}
+      <option value="__new__">＋ 新しいWebhookを追加...</option>
+    </select>
+  </div>
+
+  <div class="col-12" id="new-webhook-fields" style="display:none">
+    <div class="card card-body bg-light">
+      <h6 class="mb-3"><i class="bi bi-plus-circle"></i> 新しいWebhookを登録</h6>
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label for="new_webhook_name" class="form-label">Webhook名</label>
+          <input type="text" class="form-control" id="new_webhook_name"
+                 name="new_webhook_name" placeholder="例: #general 通知">
+        </div>
+        <div class="col-md-8">
+          <label for="new_webhook_url" class="form-label">Webhook URL</label>
+          <input type="url" class="form-control" id="new_webhook_url"
+                 name="new_webhook_url" placeholder="https://discord.com/api/webhooks/...">
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="col-12">
@@ -134,6 +158,22 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // ── Webhook selector: show/hide new-webhook fields ──────
+  const whSelect = document.getElementById('discord_webhook_id');
+  const newWhFields = document.getElementById('new-webhook-fields');
+  const newWhName = document.getElementById('new_webhook_name');
+  const newWhUrl = document.getElementById('new_webhook_url');
+
+  function toggleNewWebhook() {
+    const isNew = whSelect.value === '__new__';
+    newWhFields.style.display = isNew ? '' : 'none';
+    newWhName.required = isNew;
+    newWhUrl.required = isNew;
+  }
+  whSelect.addEventListener('change', toggleNewWebhook);
+  toggleNewWebhook();
+
+  // ── Conditions ──────────────────────────────────────────
   const container = document.getElementById('conditions');
   const addBtn = document.getElementById('add-condition');
   const accountOptions = `

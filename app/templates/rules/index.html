@@ -20,6 +20,7 @@
         <th style="width:40px"></th>
         <th>#</th>
         <th>名前</th>
+        <th>通知先</th>
         <th>条件</th>
         <th>状態</th>
         <th style="width:200px"></th>
@@ -33,6 +34,15 @@
         </td>
         <td>{{ rule.position }}</td>
         <td><strong>{{ rule.name }}</strong></td>
+        <td>
+          {% if rule.webhook %}
+            <span class="badge bg-primary">
+              <i class="bi bi-discord"></i> {{ rule.webhook.name }}
+            </span>
+          {% else %}
+            <span class="badge bg-warning text-dark">未設定</span>
+          {% endif %}
+        </td>
         <td>
           {% for c in rule.conditions %}
             <span class="badge bg-info text-dark me-1">

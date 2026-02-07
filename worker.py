@@ -84,10 +84,13 @@ def process_account(account: Account, rules):
                 account_name=account.name,
             )
             if matched:
-                logger.info("  Matched rule '%s' → sending to Discord", rule.name)
+                if not rule.webhook:
+                    logger.warning("  Rule '%s' matched but has no webhook configured", rule.name)
+                    break
+                logger.info("  Matched rule '%s' → sending to Discord via '%s'", rule.name, rule.webhook.name)
                 try:
                     send_notification(
-                        rule.discord_webhook_url,
+                        rule.webhook.url,
                         account_name=account.name,
                         from_address=msg.from_address,
                         subject=msg.subject,
