@@ -16,9 +16,7 @@ services:
       - internal
 
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/nananek/mail-notifier/app:latest
     command: python entrypoint.py gunicorn -b 0.0.0.0:5000 -w 2 wsgi:app
     environment:
       - DATABASE_URL=postgresql://mailnotifier:${DB_PASSWORD}@/mailnotifier?host=/var/run/postgresql
@@ -33,9 +31,7 @@ services:
     restart: unless-stopped
 
   worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/nananek/mail-notifier/app:latest
     command: python entrypoint.py python worker.py
     environment:
       - DATABASE_URL=postgresql://mailnotifier:${DB_PASSWORD}@/mailnotifier?host=/var/run/postgresql
@@ -50,15 +46,13 @@ services:
     restart: unless-stopped
 
   mail-bridge:
-    build:
-      context: .
-      dockerfile: Dockerfile.protonmail-bridge
+    image: ghcr.io/nananek/mail-notifier/proton-bridge:latest
     container_name: mail-bridge
     tty: true
     stdin_open: true
-    ports:
-      - "1143:1143"  # IMAP
-      - "1025:1025"  # SMTP
+    #ports:
+    #  - "1143:1143"  # IMAP
+    #  - "1025:1025"  # SMTP
     volumes:
       - ./volumes/protonmail-bridge:/root/.config/protonmail/bridge
       - ./volumes/gnupg:/root/.gnupg
