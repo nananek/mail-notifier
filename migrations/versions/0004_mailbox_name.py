@@ -1,3 +1,7 @@
+revision = '0004_mailbox_name'
+down_revision = '0003_notification_format'
+branch_labels = None
+depends_on = None
 """add mailbox_name to Account"""
 from alembic import op
 import sqlalchemy as sa

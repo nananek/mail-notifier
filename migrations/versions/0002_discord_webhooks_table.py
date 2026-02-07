@@ -7,8 +7,8 @@ Create Date: 2026-02-07
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0002"
-down_revision = "0001"
+revision = "0002_discord_webhooks_table"
+down_revision = "0001_initial_schema"
 branch_labels = None
 depends_on = None
 
