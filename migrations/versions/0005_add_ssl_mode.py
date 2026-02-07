@@ -1,7 +1,7 @@
 """Add ssl_mode to Account model
 
-Revision ID: 0005
-Revises: 0004
+Revision ID: 0005_add_ssl_mode
+Revises: 0004_mailbox_name
 Create Date: 2026-02-08
 
 """
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '0005'
-down_revision = '0004'
+revision = '0005_add_ssl_mode'
+down_revision = '0004_mailbox_name'
 branch_labels = None
 depends_on = None
 
