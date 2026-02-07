@@ -15,6 +15,7 @@ class Account(db.Model):
     imap_user = db.Column(db.String(255), nullable=False)
     imap_password = db.Column(db.String(255), nullable=False)
     use_ssl = db.Column(db.Boolean, nullable=False, default=True)
+    ssl_mode = db.Column(db.String(20), nullable=False, default="ssl")  # "none", "starttls", "ssl"
     enabled = db.Column(db.Boolean, nullable=False, default=True)
     last_uid = db.Column(db.Integer, nullable=False, default=0)
     mailbox_name = db.Column(db.String(120), nullable=False, default="INBOX")

@@ -13,16 +13,24 @@ def receive_now(account_id):
     if account.last_uid == 0 or account.last_uid is None:
         try:
             import imaplib
-            if account.use_ssl:
-                if account.imap_port == 993:
-                    # Implicit SSL (standard IMAPS)
-                    conn = imaplib.IMAP4_SSL(account.imap_host, account.imap_port)
-                else:
-                    # STARTTLS (e.g., Proton Bridge on port 1143)
-                    conn = imaplib.IMAP4(account.imap_host, account.imap_port)
-                    conn.starttls()
-            else:
+            ssl_mode = getattr(account, 'ssl_mode', None)
+            if ssl_mode == "ssl":
+                conn = imaplib.IMAP4_SSL(account.imap_host, account.imap_port)
+            elif ssl_mode == "starttls":
                 conn = imaplib.IMAP4(account.imap_host, account.imap_port)
+                conn.starttls()
+            elif ssl_mode == "none":
+                conn = imaplib.IMAP4(account.imap_host, account.imap_port)
+            else:
+                # Legacy fallback
+                if account.use_ssl:
+                    if account.imap_port == 993:
+                        conn = imaplib.IMAP4_SSL(account.imap_host, account.imap_port)
+                    else:
+                        conn = imaplib.IMAP4(account.imap_host, account.imap_port)
+                        conn.starttls()
+                else:
+                    conn = imaplib.IMAP4(account.imap_host, account.imap_port)
             conn.login(account.imap_user, account.imap_password)
             status, _ = conn.select(account.mailbox_name, readonly=True)
             if status == "OK":
@@ -47,6 +55,7 @@ def receive_now(account_id):
             use_ssl=account.use_ssl,
             last_uid=account.last_uid if account.last_uid else None,
             mailbox_name=account.mailbox_name,
+            ssl_mode=getattr(account, 'ssl_mode', None),
         ))
         count = len(messages)
         if count:
@@ -69,8 +78,9 @@ def fetch_mailboxes():
     port = int(request.form.get("imap_port", 993))
     user = request.form.get("imap_user")
     password = request.form.get("imap_password")
+    ssl_mode = request.form.get("ssl_mode")
     use_ssl = request.form.get("use_ssl") == "true"
-    mailboxes = list_mailboxes(host, port, user, password, use_ssl)
+    mailboxes = list_mailboxes(host, port, user, password, use_ssl, ssl_mode)
     return {"mailboxes": mailboxes}
 
 
@@ -90,6 +100,7 @@ def create():
             imap_user=request.form["imap_user"],
             imap_password=request.form["imap_password"],
             use_ssl="use_ssl" in request.form,
+            ssl_mode=request.form.get("ssl_mode", "ssl"),
             enabled="enabled" in request.form,
             mailbox_name=request.form.get("mailbox_name", "INBOX"),
         )
@@ -111,6 +122,7 @@ def edit(account_id):
         if request.form.get("imap_password"):
             account.imap_password = request.form["imap_password"]
         account.use_ssl = "use_ssl" in request.form
+        account.ssl_mode = request.form.get("ssl_mode", "ssl")
         account.enabled = "enabled" in request.form
         account.mailbox_name = request.form.get("mailbox_name", "INBOX")
         db.session.commit()

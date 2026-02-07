@@ -56,6 +56,7 @@ def process_account(account: Account):
             use_ssl=account.use_ssl,
             last_uid=account.last_uid,
             mailbox_name=account.mailbox_name,
+            ssl_mode=getattr(account, 'ssl_mode', None),
         )
     except Exception as exc:
         log = FailureLog(

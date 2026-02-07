@@ -58,6 +58,20 @@
       「一覧取得」ボタンで利用可能なフォルダ名を取得できます。</div>
     <div id="mailbox-list" class="mt-2"></div>
   </div>
+
+  <div class="col-md-6">
+    <label for="ssl_mode" class="form-label">SSL/TLS接続方法</label>
+    <select class="form-select" id="ssl_mode" name="ssl_mode">
+      <option value="ssl" {% if not account or account.ssl_mode == 'ssl' %}selected{% endif %}>暗黙的SSL (ポート993)</option>
+      <option value="starttls" {% if account and account.ssl_mode == 'starttls' %}selected{% endif %}>STARTTLS (Proton Bridge等)</option>
+      <option value="none" {% if account and account.ssl_mode == 'none' %}selected{% endif %}>暗号化なし</option>
+    </select>
+    <div class="form-text">
+      ・暗黙的SSL: 標準的なIMAPS (通常ポート993)<br>
+      ・STARTTLS: Proton Mail Bridge等で使用 (通常ポート1143)<br>
+      ・暗号化なし: 平文接続（非推奨）
+    </div>
+  </div>
 {% block extra_js %}
 <script>
 document.getElementById('fetch-mailboxes').addEventListener('click', function() {
@@ -65,14 +79,14 @@ document.getElementById('fetch-mailboxes').addEventListener('click', function() 
   const port = document.getElementById('imap_port').value;
   const user = document.getElementById('imap_user').value;
   const password = document.getElementById('imap_password').value;
-  const use_ssl = document.getElementById('use_ssl').checked;
+  const ssl_mode = document.getElementById('ssl_mode').value;
   const btn = this;
   btn.disabled = true;
   btn.textContent = '取得中...';
   fetch('/accounts/mailboxes', {
     method: 'POST',
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: `imap_host=${encodeURIComponent(host)}&imap_port=${encodeURIComponent(port)}&imap_user=${encodeURIComponent(user)}&imap_password=${encodeURIComponent(password)}&use_ssl=${use_ssl}`
+    body: `imap_host=${encodeURIComponent(host)}&imap_port=${encodeURIComponent(port)}&imap_user=${encodeURIComponent(user)}&imap_password=${encodeURIComponent(password)}&ssl_mode=${encodeURIComponent(ssl_mode)}`
   })
     .then(r => r.json())
     .then(data => {

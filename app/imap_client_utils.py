@@ -4,25 +4,32 @@ import imaplib
 import logging
 import imapclient
 
-def list_mailboxes(host, port, user, password, use_ssl=True):
+def list_mailboxes(host, port, user, password, use_ssl=True, ssl_mode=None):
     """
     Fetch available mailbox names (folders) for an account.
     
-    use_ssl=True:
-      - If port is 993, use implicit SSL (IMAP4_SSL)
-      - Otherwise (e.g., 1143 for Proton Bridge), use STARTTLS
+    ssl_mode: "none", "starttls", or "ssl" (if None, falls back to use_ssl+port logic)
     """
     try:
-        if use_ssl:
-            if port == 993:
-                # Implicit SSL (standard IMAPS)
+        # Determine connection mode
+        if ssl_mode:
+            if ssl_mode == "ssl":
                 conn = imaplib.IMAP4_SSL(host, port)
-            else:
-                # STARTTLS (e.g., Proton Bridge on port 1143)
+            elif ssl_mode == "starttls":
                 conn = imaplib.IMAP4(host, port)
                 conn.starttls()
+            else:  # "none"
+                conn = imaplib.IMAP4(host, port)
         else:
-            conn = imaplib.IMAP4(host, port)
+            # Legacy: use_ssl + port-based logic
+            if use_ssl:
+                if port == 993:
+                    conn = imaplib.IMAP4_SSL(host, port)
+                else:
+                    conn = imaplib.IMAP4(host, port)
+                    conn.starttls()
+            else:
+                conn = imaplib.IMAP4(host, port)
         conn.login(user, password)
         status, mailboxes = conn.list()
         conn.logout()
