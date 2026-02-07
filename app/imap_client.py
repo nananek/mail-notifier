@@ -37,7 +37,7 @@ def fetch_new_messages(
     user: str,
     password: str,
     use_ssl: bool,
-    last_uid: int,
+    last_uid: int = None,
     mailbox_name: str = "INBOX",
 ) -> Iterator[MailMessage]:
     """
@@ -45,7 +45,6 @@ def fetch_new_messages(
     and return a list of MailMessage objects.
     """
     try:
-        messages: Iterator[MailMessage] = []
         if use_ssl:
             conn = imaplib.IMAP4_SSL(host, port)
         else:
@@ -55,6 +54,12 @@ def fetch_new_messages(
         status, _ = conn.select(mailbox_name, readonly=True)
         if status != "OK":
             raise RuntimeError(f"IMAPフォルダ選択に失敗しました: {mailbox_name}")
+
+        if last_uid is None:
+            # 初回は何も取得しない（last_uid=0なら全件）
+            conn.close()
+            conn.logout()
+            return iter([])
 
         search_criterion = f"UID {last_uid + 1}:*"
         status, data = conn.uid("search", None, search_criterion)
@@ -81,11 +86,10 @@ def fetch_new_messages(
             from_addr = decode_header_value(msg.get("From", ""))
             subj = decode_header_value(msg.get("Subject", ""))
 
-            messages.append(MailMessage(uid=uid, from_address=from_addr, subject=subj))
+            yield MailMessage(uid=uid, from_address=from_addr, subject=subj)
 
         conn.close()
         conn.logout()
-        return messages
 
     except Exception:
         logger.exception("IMAP fetch failed for %s@%s:%s", user, host, port)
