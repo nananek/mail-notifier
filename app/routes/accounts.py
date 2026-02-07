@@ -12,11 +12,16 @@ def receive_now(account_id):
     # last_uidが未設定なら最新メールのUIDを取得してセット
     if account.last_uid == 0 or account.last_uid is None:
         try:
+            import imaplib
             if account.use_ssl:
-                import imaplib
-                conn = imaplib.IMAP4_SSL(account.imap_host, account.imap_port)
+                if account.imap_port == 993:
+                    # Implicit SSL (standard IMAPS)
+                    conn = imaplib.IMAP4_SSL(account.imap_host, account.imap_port)
+                else:
+                    # STARTTLS (e.g., Proton Bridge on port 1143)
+                    conn = imaplib.IMAP4(account.imap_host, account.imap_port)
+                    conn.starttls()
             else:
-                import imaplib
                 conn = imaplib.IMAP4(account.imap_host, account.imap_port)
             conn.login(account.imap_user, account.imap_password)
             status, _ = conn.select(account.mailbox_name, readonly=True)
