@@ -1,0 +1,30 @@
+FROM ubuntu:22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    pass \
+    gnupg2 \
+    ca-certificates \
+    libglib2.0-0 \
+    libsecret-1-0 \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and install Proton Mail Bridge
+RUN wget -O /tmp/protonmail-bridge.deb https://proton.me/download/bridge/protonmail-bridge_3.16.2-1_amd64.deb \
+    && dpkg -i /tmp/protonmail-bridge.deb || true \
+    && apt-get update && apt-get install -f -y \
+    && rm /tmp/protonmail-bridge.deb \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up environment
+ENV PROTONMAIL_BRIDGE_DIR=/root/.config/protonmail/bridge
+ENV GPG_TTY=/dev/console
+
+WORKDIR /root
+
+# Entrypoint: Start Bridge in CLI mode
+ENTRYPOINT ["protonmail-bridge", "--cli"]

@@ -49,6 +49,23 @@ services:
       - internal
     restart: unless-stopped
 
+  mail-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.protonmail-bridge
+    container_name: mail-bridge
+    tty: true
+    stdin_open: true
+    ports:
+      - "1143:1143"  # IMAP
+      - "1025:1025"  # SMTP
+    volumes:
+      - ./volumes/protonmail-bridge:/root/.config/protonmail/bridge
+      - ./volumes/gnupg:/root/.gnupg
+    networks:
+      - internal
+    restart: unless-stopped
+
   db:
     image: postgres:18
     command: ["postgres", "-c", "unix_socket_directories=/var/run/postgresql"]
