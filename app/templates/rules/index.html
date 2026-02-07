@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}ルール一覧 – Mail Notifier{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2><i class="bi bi-funnel"></i> 通知ルール</h2>
+  <a href="{{ url_for('rules.create') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> 新規追加
+  </a>
+</div>
+<p class="text-muted small">
+  ドラッグ&amp;ドロップで並び替えできます。上から順に評価され、最初に一致したルールで通知されます。
+</p>
+
+{% if rules %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th style="width:40px"></th>
+        <th>#</th>
+        <th>名前</th>
+        <th>条件</th>
+        <th>状態</th>
+        <th style="width:200px"></th>
+      </tr>
+    </thead>
+    <tbody id="rule-list">
+      {% for rule in rules %}
+      <tr data-id="{{ rule.id }}">
+        <td class="drag-handle" style="cursor:grab">
+          <i class="bi bi-grip-vertical"></i>
+        </td>
+        <td>{{ rule.position }}</td>
+        <td><strong>{{ rule.name }}</strong></td>
+        <td>
+          {% for c in rule.conditions %}
+            <span class="badge bg-info text-dark me-1">
+              {{ c.field }}
+              {% if c.field == 'account' and c.account %}
+                = {{ c.account.name }}
+              {% else %}
+                {{ c.match_type }} "{{ c.pattern }}"
+              {% endif %}
+            </span>
+          {% endfor %}
+        </td>
+        <td>
+          {% if rule.enabled %}
+            <span class="badge bg-success">有効</span>
+          {% else %}
+            <span class="badge bg-secondary">無効</span>
+          {% endif %}
+        </td>
+        <td class="text-end text-nowrap">
+          <form method="post" action="{{ url_for('rules.toggle', rule_id=rule.id) }}"
+                class="d-inline">
+            <button class="btn btn-sm btn-outline-{{ 'warning' if rule.enabled else 'success' }}"
+                    title="{{ '無効にする' if rule.enabled else '有効にする' }}">
+              <i class="bi bi-{{ 'pause' if rule.enabled else 'play' }}"></i>
+            </button>
+          </form>
+          <a href="{{ url_for('rules.edit', rule_id=rule.id) }}"
+             class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-pencil"></i>
+          </a>
+          <form method="post" action="{{ url_for('rules.delete', rule_id=rule.id) }}"
+                class="d-inline"
+                onsubmit="return confirm('本当に削除しますか？')">
+            <button class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+  ルールが登録されていません。「新規追加」から通知ルールを作成してください。
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const el = document.getElementById('rule-list');
+  if (!el) return;
+  Sortable.create(el, {
+    handle: '.drag-handle',
+    ghostClass: 'sortable-ghost',
+    animation: 150,
+    onEnd: function() {
+      const order = Array.from(el.querySelectorAll('tr[data-id]'))
+                         .map(tr => parseInt(tr.dataset.id));
+      fetch('{{ url_for("rules.reorder") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(order)
+      }).then(r => r.json()).then(() => location.reload());
+    }
+  });
+});
+</script>
+{% endblock %}

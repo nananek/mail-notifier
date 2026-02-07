@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}{{ 'ルール編集' if rule else '新規ルール' }} – Mail Notifier{% endblock %}
+
+{% block content %}
+<h2>
+  <i class="bi bi-funnel"></i>
+  {{ 'ルール編集' if rule else '新規ルール' }}
+</h2>
+<hr>
+
+<form method="post" class="row g-3" style="max-width:800px">
+  <div class="col-md-6">
+    <label for="name" class="form-label">ルール名</label>
+    <input type="text" class="form-control" id="name" name="name" required
+           value="{{ rule.name if rule else '' }}"
+           placeholder="例: 重要メール通知">
+  </div>
+  <div class="col-md-6">
+    <label for="discord_webhook_url" class="form-label">Discord Webhook URL</label>
+    <input type="url" class="form-control" id="discord_webhook_url"
+           name="discord_webhook_url" required
+           value="{{ rule.discord_webhook_url if rule else '' }}"
+           placeholder="https://discord.com/api/webhooks/...">
+  </div>
+
+  <div class="col-12">
+    <div class="form-check">
+      <input type="checkbox" class="form-check-input" id="enabled" name="enabled"
+             {% if not rule or rule.enabled %}checked{% endif %}>
+      <label class="form-check-label" for="enabled">有効</label>
+    </div>
+  </div>
+
+  <!-- ── Conditions ─────────────────────────────────────────── -->
+  <div class="col-12 mt-4">
+    <h5>条件（すべてANDで評価）</h5>
+    <p class="text-muted small">少なくとも1つの条件を追加してください。</p>
+
+    <div id="conditions">
+      {% if rule and rule.conditions %}
+        {% for c in rule.conditions %}
+        <div class="row g-2 mb-2 condition-row">
+          <div class="col-md-3">
+            <select class="form-select" name="cond_field_{{ loop.index0 }}">
+              <option value="from" {% if c.field == 'from' %}selected{% endif %}>送信元 (From)</option>
+              <option value="subject" {% if c.field == 'subject' %}selected{% endif %}>件名 (Subject)</option>
+              <option value="account" {% if c.field == 'account' %}selected{% endif %}>受信アカウント</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select class="form-select" name="cond_match_{{ loop.index0 }}"
+                    {% if c.field == 'account' %}disabled{% endif %}>
+              <option value="prefix" {% if c.match_type == 'prefix' %}selected{% endif %}>前方一致</option>
+              <option value="suffix" {% if c.match_type == 'suffix' %}selected{% endif %}>後方一致</option>
+              <option value="contains" {% if c.match_type == 'contains' %}selected{% endif %}>部分一致</option>
+              <option value="regex" {% if c.match_type == 'regex' %}selected{% endif %}>正規表現</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <input type="text" class="form-control" name="cond_pattern_{{ loop.index0 }}"
+                   value="{{ c.pattern }}" placeholder="パターン"
+                   {% if c.field == 'account' %}disabled{% endif %}>
+          </div>
+          <div class="col-md-3">
+            <select class="form-select" name="cond_account_{{ loop.index0 }}">
+              <option value="">-- アカウント指定なし --</option>
+              {% for a in accounts %}
+              <option value="{{ a.id }}" {% if c.account_id == a.id %}selected{% endif %}>
+                {{ a.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-1">
+            <button type="button" class="btn btn-outline-danger btn-remove-cond">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="row g-2 mb-2 condition-row">
+          <div class="col-md-3">
+            <select class="form-select" name="cond_field_0">
+              <option value="from">送信元 (From)</option>
+              <option value="subject">件名 (Subject)</option>
+              <option value="account">受信アカウント</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select class="form-select" name="cond_match_0">
+              <option value="prefix">前方一致</option>
+              <option value="suffix">後方一致</option>
+              <option value="contains" selected>部分一致</option>
+              <option value="regex">正規表現</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <input type="text" class="form-control" name="cond_pattern_0" placeholder="パターン">
+          </div>
+          <div class="col-md-3">
+            <select class="form-select" name="cond_account_0">
+              <option value="">-- アカウント指定なし --</option>
+              {% for a in accounts %}
+              <option value="{{ a.id }}">{{ a.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-1">
+            <button type="button" class="btn btn-outline-danger btn-remove-cond">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <button type="button" class="btn btn-outline-secondary btn-sm mt-1" id="add-condition">
+      <i class="bi bi-plus-lg"></i> 条件を追加
+    </button>
+  </div>
+
+  <div class="col-12 mt-4">
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-check-lg"></i> 保存
+    </button>
+    <a href="{{ url_for('rules.index') }}" class="btn btn-outline-secondary ms-2">
+      キャンセル
+    </a>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const container = document.getElementById('conditions');
+  const addBtn = document.getElementById('add-condition');
+  const accountOptions = `
+    <option value="">-- アカウント指定なし --</option>
+    {% for a in accounts %}
+    <option value="{{ a.id }}">{{ a.name }}</option>
+    {% endfor %}
+  `;
+
+  addBtn.addEventListener('click', function() {
+    const idx = container.querySelectorAll('.condition-row').length;
+    const row = document.createElement('div');
+    row.className = 'row g-2 mb-2 condition-row';
+    row.innerHTML = `
+      <div class="col-md-3">
+        <select class="form-select" name="cond_field_${idx}">
+          <option value="from">送信元 (From)</option>
+          <option value="subject">件名 (Subject)</option>
+          <option value="account">受信アカウント</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select class="form-select" name="cond_match_${idx}">
+          <option value="prefix">前方一致</option>
+          <option value="suffix">後方一致</option>
+          <option value="contains" selected>部分一致</option>
+          <option value="regex">正規表現</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <input type="text" class="form-control" name="cond_pattern_${idx}" placeholder="パターン">
+      </div>
+      <div class="col-md-3">
+        <select class="form-select" name="cond_account_${idx}">
+          ${accountOptions}
+        </select>
+      </div>
+      <div class="col-md-1">
+        <button type="button" class="btn btn-outline-danger btn-remove-cond">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    `;
+    container.appendChild(row);
+    bindFieldToggle(row);
+  });
+
+  // Remove condition row
+  container.addEventListener('click', function(e) {
+    const btn = e.target.closest('.btn-remove-cond');
+    if (btn) {
+      btn.closest('.condition-row').remove();
+      reindex();
+    }
+  });
+
+  // When field = "account", disable match_type & pattern, enable account select
+  function bindFieldToggle(row) {
+    const fieldSel = row.querySelector('[name^="cond_field_"]');
+    const matchSel = row.querySelector('[name^="cond_match_"]');
+    const patternIn = row.querySelector('[name^="cond_pattern_"]');
+    fieldSel.addEventListener('change', function() {
+      const isAccount = this.value === 'account';
+      matchSel.disabled = isAccount;
+      patternIn.disabled = isAccount;
+    });
+  }
+
+  // Re-index condition names after removal
+  function reindex() {
+    container.querySelectorAll('.condition-row').forEach(function(row, i) {
+      row.querySelector('[name^="cond_field_"]').name = 'cond_field_' + i;
+      row.querySelector('[name^="cond_match_"]').name = 'cond_match_' + i;
+      row.querySelector('[name^="cond_pattern_"]').name = 'cond_pattern_' + i;
+      row.querySelector('[name^="cond_account_"]').name = 'cond_account_' + i;
+    });
+  }
+
+  // Bind toggle for existing rows
+  container.querySelectorAll('.condition-row').forEach(bindFieldToggle);
+});
+</script>
+{% endblock %}

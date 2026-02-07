@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}{{ 'アカウント編集' if account else '新規アカウント' }} – Mail Notifier{% endblock %}
+
+{% block content %}
+<h2>
+  <i class="bi bi-person-badge"></i>
+  {{ 'アカウント編集' if account else '新規アカウント' }}
+</h2>
+<hr>
+
+<form method="post" class="row g-3" style="max-width:700px">
+  <div class="col-12">
+    <label for="name" class="form-label">表示名</label>
+    <input type="text" class="form-control" id="name" name="name" required
+           value="{{ account.name if account else '' }}"
+           placeholder="例: Gmail / Proton Mail">
+  </div>
+
+  <div class="col-md-8">
+    <label for="imap_host" class="form-label">IMAPホスト</label>
+    <input type="text" class="form-control" id="imap_host" name="imap_host" required
+           value="{{ account.imap_host if account else '' }}"
+           placeholder="例: imap.gmail.com / 127.0.0.1">
+  </div>
+  <div class="col-md-4">
+    <label for="imap_port" class="form-label">ポート</label>
+    <input type="number" class="form-control" id="imap_port" name="imap_port"
+           value="{{ account.imap_port if account else 993 }}">
+  </div>
+
+  <div class="col-md-6">
+    <label for="imap_user" class="form-label">ユーザー名</label>
+    <input type="text" class="form-control" id="imap_user" name="imap_user" required
+           value="{{ account.imap_user if account else '' }}"
+           placeholder="user@example.com">
+  </div>
+  <div class="col-md-6">
+    <label for="imap_password" class="form-label">パスワード</label>
+    <input type="password" class="form-control" id="imap_password" name="imap_password"
+           {% if not account %}required{% endif %}
+           placeholder="{{ '変更する場合のみ入力' if account else '' }}">
+    {% if account %}
+    <div class="form-text">空欄の場合は既存のパスワードを維持します。</div>
+    {% endif %}
+  </div>
+
+  <div class="col-12">
+    <div class="form-check form-check-inline">
+      <input type="checkbox" class="form-check-input" id="use_ssl" name="use_ssl"
+             {% if not account or account.use_ssl %}checked{% endif %}>
+      <label class="form-check-label" for="use_ssl">SSL/TLSを使用</label>
+    </div>
+    <div class="form-check form-check-inline">
+      <input type="checkbox" class="form-check-input" id="enabled" name="enabled"
+             {% if not account or account.enabled %}checked{% endif %}>
+      <label class="form-check-label" for="enabled">有効</label>
+    </div>
+  </div>
+
+  <div class="col-12 mt-4">
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-check-lg"></i> 保存
+    </button>
+    <a href="{{ url_for('accounts.index') }}" class="btn btn-outline-secondary ms-2">
+      キャンセル
+    </a>
+  </div>
+</form>
+{% endblock %}

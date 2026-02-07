@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}アカウント一覧 – Mail Notifier{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2><i class="bi bi-person-badge"></i> メールアカウント</h2>
+  <a href="{{ url_for('accounts.create') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> 新規追加
+  </a>
+</div>
+
+{% if accounts %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>名前</th>
+        <th>IMAPサーバー</th>
+        <th>ユーザー</th>
+        <th>SSL</th>
+        <th>状態</th>
+        <th>Last UID</th>
+        <th style="width:160px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in accounts %}
+      <tr>
+        <td>{{ a.name }}</td>
+        <td>{{ a.imap_host }}:{{ a.imap_port }}</td>
+        <td>{{ a.imap_user }}</td>
+        <td>
+          {% if a.use_ssl %}
+            <span class="badge bg-success">SSL</span>
+          {% else %}
+            <span class="badge bg-secondary">なし</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if a.enabled %}
+            <span class="badge bg-success">有効</span>
+          {% else %}
+            <span class="badge bg-secondary">無効</span>
+          {% endif %}
+        </td>
+        <td><code>{{ a.last_uid }}</code></td>
+        <td class="text-end">
+          <a href="{{ url_for('accounts.edit', account_id=a.id) }}"
+             class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-pencil"></i>
+          </a>
+          <form method="post" action="{{ url_for('accounts.delete', account_id=a.id) }}"
+                class="d-inline"
+                onsubmit="return confirm('本当に削除しますか？')">
+            <button class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+  アカウントが登録されていません。「新規追加」からメールアカウントを追加してください。
+</div>
+{% endif %}
+{% endblock %}

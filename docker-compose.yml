@@ -1,0 +1,73 @@
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    hostname: mail-notifier
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_EXTRA_ARGS=--advertise-exit-node=false
+    volumes:
+      - ./volumes/tailscale:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    restart: unless-stopped
+    networks:
+      - internal
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python entrypoint.py gunicorn -b 0.0.0.0:5000 -w 2 wsgi:app
+    environment:
+      - DATABASE_URL=postgresql://mailnotifier:${DB_PASSWORD}@/mailnotifier?host=/var/run/postgresql
+      - SECRET_KEY=${SECRET_KEY}
+      - FLASK_ENV=${FLASK_ENV:-production}
+    volumes:
+      - ./volumes/pgsock:/var/run/postgresql
+    depends_on:
+      db:
+        condition: service_healthy
+    network_mode: service:tailscale
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python entrypoint.py python worker.py
+    environment:
+      - DATABASE_URL=postgresql://mailnotifier:${DB_PASSWORD}@/mailnotifier?host=/var/run/postgresql
+      - POLL_INTERVAL=${POLL_INTERVAL:-60}
+    volumes:
+      - ./volumes/pgsock:/var/run/postgresql
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+    restart: unless-stopped
+
+  db:
+    image: postgres:18
+    command: ["postgres", "-c", "unix_socket_directories=/var/run/postgresql"]
+    environment:
+      - POSTGRES_USER=mailnotifier
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=mailnotifier
+    volumes:
+      - ./volumes/pgdata:/var/lib/postgresql/data
+      - ./volumes/pgsock:/var/run/postgresql
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mailnotifier -h /var/run/postgresql"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  internal:
+    driver: bridge
