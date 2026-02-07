@@ -51,3 +51,24 @@ Tailscale ネットワーク内から `https://mail-notifier.<tailnet名>` で�
 - `/rules` – 通知ルール管理（ドラッグ&ドロップ並び替え）
 - `/accounts` – IMAP アカウント管理
 - `/maintenance` – ワーカー制御・失敗ログ閲覧
+
+## 通知フォーマットのカスタマイズ
+
+- `/notification_formats` 画面で通知フォーマット（テンプレート）を作成・編集できます。
+- 各ルールごとに通知フォーマットを選択可能です。
+- テンプレートには以下の変数が利用できます:
+    - `{account_name}`: アカウント名
+    - `{from_address}`: 送信元メールアドレス
+    - `{subject}`: 件名
+    - `{rule_name}`: ルール名
+- 例:
+    ```
+    {account_name} に新着メール: {subject} ({from_address})
+    ルール: {rule_name}
+    ```
+- フォーマットを選択しない場合はデフォルトの通知内容になります。
+
+## 失敗ログについて
+
+- IMAP接続や認証失敗、Discord通知失敗などは `/maintenance` 画面で確認できます。
+- 失敗ログは FailureLog テーブルに記録され、30日間保持されます。
