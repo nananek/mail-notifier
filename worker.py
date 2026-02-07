@@ -19,8 +19,7 @@ from app import create_app
 from app.extensions import db
 from app.models import Account, Rule, FailureLog, WorkerState
 from app.imap_client import fetch_new_messages
-from app.matcher import evaluate_rule
-from app.discord import send_notification
+from app.notify import evaluate_and_notify
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,7 +40,7 @@ def cleanup_old_logs():
         logger.info("Cleaned up %d old failure log(s)", deleted)
 
 
-def process_account(account: Account, rules):
+def process_account(account: Account):
     """Fetch new mail for *account* and evaluate rules."""
     logger.info("Checking %s (%s@%s:%s)", account.name, account.imap_user, account.imap_host, account.imap_port)
 
@@ -73,62 +72,7 @@ def process_account(account: Account, rules):
     for msg in messages:
         found = True
         logger.info("  New mail uid=%d from=%s subject=%s", msg.uid, msg.from_address, msg.subject)
-
-        for rule in rules:
-            if not rule.enabled:
-                continue
-            matched = evaluate_rule(
-                rule,
-                from_address=msg.from_address,
-                subject=msg.subject,
-                account_id=account.id,
-                account_name=account.name,
-            )
-            if matched:
-                if not rule.webhook:
-                    logger.warning("  Rule '%s' matched but has no webhook configured", rule.name)
-                    break
-                logger.info("  Matched rule '%s' → sending to Discord via '%s'", rule.name, rule.webhook.name)
-                fmt = rule.notification_format
-                if fmt and fmt.template:
-                    template_vars = {
-                        "account_name": account.name,
-                        "from_address": msg.from_address,
-                        "subject": msg.subject,
-                        "rule_name": rule.name,
-                    }
-                    try:
-                        rendered = fmt.template.format(**template_vars)
-                    except Exception as exc:
-                        logger.error("  Format rendering failed: %s", exc)
-                        rendered = f"{account.name} {msg.from_address} {msg.subject}"
-                else:
-                    rendered = (
-                        f"**アカウント:** {account.name}\n"
-                        f"**ルール:** {rule.name}\n"
-                        f"**送信元:** {msg.from_address}\n"
-                        f"**件名:** {msg.subject}"
-                    )
-                try:
-                    send_notification(
-                        rule.webhook.url,
-                        rendered_message=rendered,
-                        rule_name=rule.name,
-                        subject=msg.subject,
-                    )
-                except Exception as exc:
-                    logger.error("  Discord send failed: %s", exc)
-                    log = FailureLog(
-                        account_id=account.id,
-                        rule_id=rule.id,
-                        message_uid=msg.uid,
-                        from_address=msg.from_address,
-                        subject=msg.subject,
-                        error_message=f"Discord error: {exc}",
-                    )
-                    db.session.add(log)
-                    db.session.commit()
-                break  # first match wins
+        evaluate_and_notify(account, msg)
 
         if msg.uid > max_uid:
             max_uid = msg.uid
@@ -167,13 +111,12 @@ def run():
             # Periodic log cleanup
             cleanup_old_logs()
 
-            # Load active accounts & rules
+            # Load active accounts
             accounts = Account.query.filter_by(enabled=True).all()
-            rules = Rule.query.order_by(Rule.position).all()
 
             for account in accounts:
                 try:
-                    process_account(account, rules)
+                    process_account(account)
                 except Exception:
                     logger.exception("Unhandled error processing %s", account.name)
 
