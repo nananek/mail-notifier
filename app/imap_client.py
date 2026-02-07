@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 class MailMessage:
     uid: int
     from_address: str
+    to_address: str
     subject: str
 
 
@@ -102,9 +103,10 @@ def fetch_new_messages(
             msg = email.message_from_bytes(raw_header)
 
             from_addr = decode_header_value(msg.get("From", ""))
+            to_addr = decode_header_value(msg.get("To", ""))
             subj = decode_header_value(msg.get("Subject", ""))
 
-            yield MailMessage(uid=uid, from_address=from_addr, subject=subj)
+            yield MailMessage(uid=uid, from_address=from_addr, to_address=to_addr, subject=subj)
 
         conn.close()
         conn.logout()

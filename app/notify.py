@@ -29,6 +29,7 @@ def evaluate_and_notify(account, msg):
         matched = evaluate_rule(
             rule,
             from_address=msg.from_address,
+            to_address=msg.to_address,
             subject=msg.subject,
             account_id=account.id,
             account_name=account.name,

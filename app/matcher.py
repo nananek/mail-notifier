@@ -26,7 +26,7 @@ def matches_condition(condition: RuleCondition, value: str) -> bool:
     return False
 
 
-def evaluate_rule(rule, *, from_address: str, subject: str, account_id: int, account_name: str) -> bool:
+def evaluate_rule(rule, *, from_address: str, to_address: str, subject: str, account_id: int, account_name: str) -> bool:
     """
     Evaluate all conditions on *rule* against the given email fields.
     All conditions must match (AND logic).
@@ -41,6 +41,10 @@ def evaluate_rule(rule, *, from_address: str, subject: str, account_id: int, acc
         if cond.field == RuleCondition.FIELD_FROM:
             if not matches_condition(cond, from_address):
                 logger.debug("  Condition failed: FROM '%s' does not match pattern '%s'", from_address, cond.pattern)
+                return False
+        elif cond.field == RuleCondition.FIELD_TO:
+            if not matches_condition(cond, to_address):
+                logger.debug("  Condition failed: TO '%s' does not match pattern '%s'", to_address, cond.pattern)
                 return False
         elif cond.field == RuleCondition.FIELD_SUBJECT:
             if not matches_condition(cond, subject):

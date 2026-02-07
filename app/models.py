@@ -131,9 +131,10 @@ class RuleCondition(db.Model):
 
     # Which field to match
     FIELD_FROM = "from"
+    FIELD_TO = "to"
     FIELD_SUBJECT = "subject"
     FIELD_ACCOUNT = "account"
-    FIELD_CHOICES = [FIELD_FROM, FIELD_SUBJECT, FIELD_ACCOUNT]
+    FIELD_CHOICES = [FIELD_FROM, FIELD_TO, FIELD_SUBJECT, FIELD_ACCOUNT]
 
     field = db.Column(db.String(20), nullable=False)
 

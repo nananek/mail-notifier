@@ -77,6 +77,7 @@
           <div class="col-md-3">
             <select class="form-select" name="cond_field_{{ loop.index0 }}">
               <option value="from" {% if c.field == 'from' %}selected{% endif %}>送信元 (From)</option>
+              <option value="to" {% if c.field == 'to' %}selected{% endif %}>宛先 (To)</option>
               <option value="subject" {% if c.field == 'subject' %}selected{% endif %}>件名 (Subject)</option>
               <option value="account" {% if c.field == 'account' %}selected{% endif %}>受信アカウント</option>
             </select>
@@ -117,6 +118,7 @@
           <div class="col-md-3">
             <select class="form-select" name="cond_field_0">
               <option value="from">送信元 (From)</option>
+              <option value="to">宛先 (To)</option>
               <option value="subject">件名 (Subject)</option>
               <option value="account">受信アカウント</option>
             </select>
@@ -201,6 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <div class="col-md-3">
         <select class="form-select" name="cond_field_${idx}">
           <option value="from">送信元 (From)</option>
+          <option value="to">宛先 (To)</option>
           <option value="subject">件名 (Subject)</option>
           <option value="account">受信アカウント</option>
         </select>
