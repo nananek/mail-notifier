@@ -17,10 +17,12 @@ def create_app(config_class=Config):
     from app.routes.accounts import accounts_bp
     from app.routes.rules import rules_bp
     from app.routes.maintenance import maintenance_bp
+    from app.routes.notification_formats import notification_formats_bp
 
     app.register_blueprint(accounts_bp)
     app.register_blueprint(rules_bp)
     app.register_blueprint(maintenance_bp)
+    app.register_blueprint(notification_formats_bp)
 
     @app.route("/")
     def index():

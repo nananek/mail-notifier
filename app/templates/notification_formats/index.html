@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}通知フォーマット管理 – Mail Notifier{% endblock %}
+{% block content %}
+<h2><i class="bi bi-file-text"></i> 通知フォーマット管理</h2>
+<hr>
+<a href="{{ url_for('notification_formats.create') }}" class="btn btn-primary mb-3">
+  <i class="bi bi-plus-lg"></i> 新規フォーマット作成
+</a>
+<table class="table table-bordered table-hover">
+  <thead>
+    <tr>
+      <th>名前</th>
+      <th>テンプレート</th>
+      <th>編集</th>
+      <th>削除</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for fmt in formats %}
+    <tr>
+      <td>{{ fmt.name }}</td>
+      <td><pre style="white-space:pre-wrap">{{ fmt.template }}</pre></td>
+      <td>
+        <a href="{{ url_for('notification_formats.edit', format_id=fmt.id) }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-pencil"></i> 編集
+        </a>
+      </td>
+      <td>
+        <form method="post" action="{{ url_for('notification_formats.delete', format_id=fmt.id) }}" style="display:inline">
+          <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('削除しますか?')">
+            <i class="bi bi-trash"></i> 削除
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
