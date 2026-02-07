@@ -1,3 +1,27 @@
+from app.imap_client import fetch_new_messages
+from app.models import Rule
+@accounts_bp.route("/<int:account_id>/receive", methods=["POST"])
+def receive_now(account_id):
+    account = Account.query.get_or_404(account_id)
+    # fetch new messages
+    messages = fetch_new_messages(
+        host=account.imap_host,
+        port=account.imap_port,
+        user=account.imap_user,
+        password=account.imap_password,
+        use_ssl=account.use_ssl,
+        last_uid=account.last_uid,
+        mailbox_name=account.mailbox_name,
+    )
+    # dummy rule evaluation (real worker logic not triggered)
+    count = len(messages)
+    if count:
+        account.last_uid = max(m.uid for m in messages)
+        db.session.commit()
+        flash(f"{count}件の新着メールを受信しました。", "success")
+    else:
+        flash("新着メールはありません。", "info")
+    return redirect(url_for("accounts.index"))
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app.extensions import db
