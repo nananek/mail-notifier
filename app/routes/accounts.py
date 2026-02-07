@@ -1,3 +1,11 @@
+
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from app.extensions import db
+from app.models import Account
+from app.imap_client_utils import list_mailboxes
+
+accounts_bp = Blueprint("accounts", __name__, url_prefix="/accounts")
+
 @accounts_bp.route("/mailboxes", methods=["POST"])
 def fetch_mailboxes():
     host = request.form.get("imap_host")
@@ -7,12 +15,6 @@ def fetch_mailboxes():
     use_ssl = request.form.get("use_ssl") == "true"
     mailboxes = list_mailboxes(host, port, user, password, use_ssl)
     return {"mailboxes": mailboxes}
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from app.extensions import db
-from app.models import Account
-from app.imap_client_utils import list_mailboxes
-
-accounts_bp = Blueprint("accounts", __name__, url_prefix="/accounts")
 
 
 @accounts_bp.route("/")
