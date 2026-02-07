@@ -29,12 +29,6 @@ class Account(db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    rules = db.relationship(
-        "RuleCondition",
-        back_populates="account",
-        foreign_keys="RuleCondition.account_id",
-    )
-
     def __repr__(self):
         return f"<Account {self.name}>"
 
@@ -97,6 +91,11 @@ class Rule(db.Model):
         db.ForeignKey("notification_formats.id", ondelete="SET NULL"),
         nullable=True,
     )
+    account_id = db.Column(
+        db.Integer,
+        db.ForeignKey("accounts.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     position = db.Column(db.Integer, nullable=False, default=0)
     enabled = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(
@@ -111,6 +110,7 @@ class Rule(db.Model):
 
     webhook = db.relationship("DiscordWebhook", back_populates="rules")
     notification_format = db.relationship("NotificationFormat", back_populates="rules")
+    account = db.relationship("Account")
     conditions = db.relationship(
         "RuleCondition", back_populates="rule", cascade="all, delete-orphan"
     )
@@ -133,8 +133,7 @@ class RuleCondition(db.Model):
     FIELD_FROM = "from"
     FIELD_TO = "to"
     FIELD_SUBJECT = "subject"
-    FIELD_ACCOUNT = "account"
-    FIELD_CHOICES = [FIELD_FROM, FIELD_TO, FIELD_SUBJECT, FIELD_ACCOUNT]
+    FIELD_CHOICES = [FIELD_FROM, FIELD_TO, FIELD_SUBJECT]
 
     field = db.Column(db.String(20), nullable=False)
 
@@ -148,13 +147,7 @@ class RuleCondition(db.Model):
     match_type = db.Column(db.String(20), nullable=False, default=MATCH_CONTAINS)
     pattern = db.Column(db.String(500), nullable=False)
 
-    # Optional: restrict to a specific account
-    account_id = db.Column(
-        db.Integer, db.ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True
-    )
-
     rule = db.relationship("Rule", back_populates="conditions")
-    account = db.relationship("Account", back_populates="rules")
 
     def __repr__(self):
         return f"<RuleCondition {self.field} {self.match_type} '{self.pattern}'>"

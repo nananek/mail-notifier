@@ -26,6 +26,11 @@ def evaluate_and_notify(account, msg):
         if not rule.enabled:
             continue
 
+        # Check if rule is restricted to a specific account
+        if rule.account_id is not None and rule.account_id != account.id:
+            logger.debug("Rule '%s' skipped: account filter (%d != %d)", rule.name, rule.account_id, account.id)
+            continue
+
         matched = evaluate_rule(
             rule,
             from_address=msg.from_address,

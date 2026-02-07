@@ -50,16 +50,6 @@ def evaluate_rule(rule, *, from_address: str, to_address: str, subject: str, acc
             if not matches_condition(cond, subject):
                 logger.debug("  Condition failed: SUBJECT '%s' does not match pattern '%s'", subject, cond.pattern)
                 return False
-        elif cond.field == RuleCondition.FIELD_ACCOUNT:
-            # Account condition: must have account_id set and must match
-            if cond.account_id is None:
-                # No account specified in condition → skip (or treat as always match)
-                logger.debug("  Condition: ACCOUNT not specified, skipping")
-                continue
-            if cond.account_id != account_id:
-                logger.debug("  Condition failed: ACCOUNT %d != %d", cond.account_id, account_id)
-                return False
-            logger.debug("  Condition passed: ACCOUNT %d matches", account_id)
         else:
             logger.debug("  Condition failed: Unknown field type '%s'", cond.field)
             return False  # Unknown field type

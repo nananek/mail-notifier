@@ -17,10 +17,12 @@ def create():
         webhook_id = _resolve_webhook(request.form)
         max_pos = db.session.query(db.func.max(Rule.position)).scalar() or 0
         format_id = int(request.form.get("notification_format_id") or 0) or None
+        account_id = int(request.form.get("account_id") or 0) or None
         rule = Rule(
             name=request.form["name"],
             discord_webhook_id=webhook_id,
             notification_format_id=format_id,
+            account_id=account_id,
             position=max_pos + 1,
             enabled="enabled" in request.form,
         )
@@ -44,6 +46,7 @@ def edit(rule_id):
         rule.name = request.form["name"]
         rule.discord_webhook_id = _resolve_webhook(request.form)
         rule.notification_format_id = int(request.form.get("notification_format_id") or 0) or None
+        rule.account_id = int(request.form.get("account_id") or 0) or None
         rule.enabled = "enabled" in request.form
 
         RuleCondition.query.filter_by(rule_id=rule.id).delete()
@@ -116,7 +119,6 @@ def _save_conditions(rule, form):
             break
         match_type = form.get(f"cond_match_{idx}", "contains")
         pattern = form.get(f"cond_pattern_{idx}", "")
-        account_id = form.get(f"cond_account_{idx}")
 
         if field and pattern:
             cond = RuleCondition(
@@ -124,7 +126,6 @@ def _save_conditions(rule, form):
                 field=field,
                 match_type=match_type,
                 pattern=pattern,
-                account_id=int(account_id) if account_id else None,
             )
             db.session.add(cond)
         idx += 1
