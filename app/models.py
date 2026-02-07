@@ -200,3 +200,22 @@ class WorkerState(db.Model):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+
+class WorkerTrigger(db.Model):
+    """Trigger record to request immediate polling for a specific account."""
+
+    __tablename__ = "worker_triggers"
+
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(
+        db.Integer, db.ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False
+    )
+    requested_at = db.Column(
+        db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    account = db.relationship("Account")
+
+    def __repr__(self):
+        return f"<WorkerTrigger account_id={self.account_id} @ {self.requested_at}>"

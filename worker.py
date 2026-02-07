@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from app import create_app
 from app.extensions import db
-from app.models import Account, Rule, FailureLog, WorkerState
+from app.models import Account, Rule, FailureLog, WorkerState, WorkerTrigger
 from app.imap_client import fetch_new_messages
 from app.notify import evaluate_and_notify
 
@@ -112,10 +112,33 @@ def run():
             # Periodic log cleanup
             cleanup_old_logs()
 
-            # Load active accounts
+            # Check for triggered accounts (immediate polling requests)
+            triggers = WorkerTrigger.query.all()
+            triggered_account_ids = {t.account_id for t in triggers}
+            
+            if triggers:
+                logger.info("Processing %d triggered account(s)", len(triggers))
+                for trigger in triggers:
+                    account = Account.query.get(trigger.account_id)
+                    if account and account.enabled:
+                        try:
+                            logger.info("Triggered polling for %s", account.name)
+                            process_account(account)
+                        except Exception:
+                            logger.exception("Error processing triggered account %s", account.name)
+                
+                # Delete all processed triggers
+                for trigger in triggers:
+                    db.session.delete(trigger)
+                db.session.commit()
+
+            # Load active accounts (excluding already triggered ones)
             accounts = Account.query.filter_by(enabled=True).all()
 
             for account in accounts:
+                if account.id in triggered_account_ids:
+                    # Already processed in this cycle
+                    continue
                 try:
                     process_account(account)
                 except Exception:
