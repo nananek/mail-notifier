@@ -88,6 +88,22 @@ def process_account(account: Account, rules):
                     logger.warning("  Rule '%s' matched but has no webhook configured", rule.name)
                     break
                 logger.info("  Matched rule '%s' → sending to Discord via '%s'", rule.name, rule.webhook.name)
+                # Render notification format
+                fmt = rule.notification_format
+                if fmt and fmt.template:
+                    template_vars = {
+                        "account_name": account.name,
+                        "from_address": msg.from_address,
+                        "subject": msg.subject,
+                        "rule_name": rule.name,
+                    }
+                    try:
+                        rendered = fmt.template.format(**template_vars)
+                    except Exception as exc:
+                        logger.error("  Format rendering failed: %s", exc)
+                        rendered = f"{account.name} {msg.from_address} {msg.subject}"
+                else:
+                    rendered = f"{account.name} {msg.from_address} {msg.subject}"
                 try:
                     send_notification(
                         rule.webhook.url,
@@ -95,6 +111,7 @@ def process_account(account: Account, rules):
                         from_address=msg.from_address,
                         subject=msg.subject,
                         rule_name=rule.name,
+                        rendered_message=rendered,
                     )
                 except Exception as exc:
                     logger.error("  Discord send failed: %s", exc)

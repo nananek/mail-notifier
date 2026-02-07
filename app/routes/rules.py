@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from app.extensions import db
-from app.models import Rule, RuleCondition, Account, DiscordWebhook
+from app.models import Rule, RuleCondition, Account, DiscordWebhook, NotificationFormat
 
 rules_bp = Blueprint("rules", __name__, url_prefix="/rules")
 
@@ -14,28 +14,27 @@ def index():
 @rules_bp.route("/new", methods=["GET", "POST"])
 def create():
     if request.method == "POST":
-        # Handle inline webhook creation
         webhook_id = _resolve_webhook(request.form)
-
         max_pos = db.session.query(db.func.max(Rule.position)).scalar() or 0
+        format_id = int(request.form.get("notification_format_id") or 0) or None
         rule = Rule(
             name=request.form["name"],
             discord_webhook_id=webhook_id,
+            notification_format_id=format_id,
             position=max_pos + 1,
             enabled="enabled" in request.form,
         )
         db.session.add(rule)
         db.session.flush()
-
         _save_conditions(rule, request.form)
-
         db.session.commit()
         flash("ルールを作成しました。", "success")
         return redirect(url_for("rules.index"))
 
     accounts = Account.query.order_by(Account.name).all()
     webhooks = DiscordWebhook.query.order_by(DiscordWebhook.name).all()
-    return render_template("rules/form.html", rule=None, accounts=accounts, webhooks=webhooks)
+    formats = NotificationFormat.query.order_by(NotificationFormat.name).all()
+    return render_template("rules/form.html", rule=None, accounts=accounts, webhooks=webhooks, formats=formats)
 
 
 @rules_bp.route("/<int:rule_id>/edit", methods=["GET", "POST"])
@@ -44,9 +43,9 @@ def edit(rule_id):
     if request.method == "POST":
         rule.name = request.form["name"]
         rule.discord_webhook_id = _resolve_webhook(request.form)
+        rule.notification_format_id = int(request.form.get("notification_format_id") or 0) or None
         rule.enabled = "enabled" in request.form
 
-        # Remove old conditions and re-create
         RuleCondition.query.filter_by(rule_id=rule.id).delete()
         _save_conditions(rule, request.form)
 
@@ -56,7 +55,8 @@ def edit(rule_id):
 
     accounts = Account.query.order_by(Account.name).all()
     webhooks = DiscordWebhook.query.order_by(DiscordWebhook.name).all()
-    return render_template("rules/form.html", rule=rule, accounts=accounts, webhooks=webhooks)
+    formats = NotificationFormat.query.order_by(NotificationFormat.name).all()
+    return render_template("rules/form.html", rule=rule, accounts=accounts, webhooks=webhooks, formats=formats)
 
 
 @rules_bp.route("/<int:rule_id>/delete", methods=["POST"])

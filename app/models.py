@@ -61,6 +61,23 @@ class DiscordWebhook(db.Model):
         return f"<DiscordWebhook {self.name}>"
 
 
+
+class NotificationFormat(db.Model):
+    """Notification format for Discord messages."""
+    __tablename__ = "notification_formats"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    template = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    rules = db.relationship("Rule", back_populates="notification_format")
+
+    def __repr__(self):
+        return f"<NotificationFormat {self.name}>"
+
+
 class Rule(db.Model):
     """Notification rule – evaluated in `position` order; first match wins."""
 
@@ -71,6 +88,11 @@ class Rule(db.Model):
     discord_webhook_id = db.Column(
         db.Integer,
         db.ForeignKey("discord_webhooks.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    notification_format_id = db.Column(
+        db.Integer,
+        db.ForeignKey("notification_formats.id", ondelete="SET NULL"),
         nullable=True,
     )
     position = db.Column(db.Integer, nullable=False, default=0)
@@ -86,6 +108,7 @@ class Rule(db.Model):
     )
 
     webhook = db.relationship("DiscordWebhook", back_populates="rules")
+    notification_format = db.relationship("NotificationFormat", back_populates="rules")
     conditions = db.relationship(
         "RuleCondition", back_populates="rule", cascade="all, delete-orphan"
     )

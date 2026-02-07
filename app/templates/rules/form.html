@@ -29,6 +29,16 @@
     </select>
   </div>
 
+  <div class="col-md-6">
+    <label for="notification_format_id" class="form-label">通知フォーマット</label>
+    <select class="form-select" id="notification_format_id" name="notification_format_id" required>
+      {% for fmt in formats %}
+      <option value="{{ fmt.id }}" {% if rule and rule.notification_format_id == fmt.id %}selected{% endif %}>{{ fmt.name }}</option>
+      {% endfor %}
+    </select>
+    <div class="form-text">Discord通知の内容をカスタマイズできます。<br>テンプレート編集は管理画面から行えます。</div>
+  </div>
+
   <div class="col-12" id="new-webhook-fields" style="display:none">
     <div class="card card-body bg-light">
       <h6 class="mb-3"><i class="bi bi-plus-circle"></i> 新しいWebhookを登録</h6>
