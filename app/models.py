@@ -17,6 +17,7 @@ class Account(db.Model):
     use_ssl = db.Column(db.Boolean, nullable=False, default=True)
     enabled = db.Column(db.Boolean, nullable=False, default=True)
     last_uid = db.Column(db.Integer, nullable=False, default=0)
+    mailbox_name = db.Column(db.String(120), nullable=False, default="INBOX")
     created_at = db.Column(
         db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
     )

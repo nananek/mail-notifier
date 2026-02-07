@@ -51,6 +51,7 @@ Tailscale ネットワーク内から `https://mail-notifier.<tailnet名>` で�
 - `/rules` – 通知ルール管理（ドラッグ&ドロップ並び替え）
 - `/accounts` – IMAP アカウント管理
 - `/maintenance` – ワーカー制御・失敗ログ閲覧
+- `/notification_formats` – 通知フォーマット管理・編集
 
 ## 通知フォーマットのカスタマイズ
 

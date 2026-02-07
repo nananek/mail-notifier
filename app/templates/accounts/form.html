@@ -44,6 +44,56 @@
     {% endif %}
   </div>
 
+  <div class="col-md-6">
+    <label for="mailbox_name" class="form-label">受信トレイ名</label>
+    <div class="input-group">
+      <input type="text" class="form-control" id="mailbox_name" name="mailbox_name" required
+             value="{{ account.mailbox_name if account else 'INBOX' }}"
+             placeholder="例: INBOX, Inbox, 受信トレイ">
+      <button type="button" class="btn btn-outline-secondary" id="fetch-mailboxes">
+        <i class="bi bi-search"></i> 一覧取得
+      </button>
+    </div>
+    <div class="form-text">IMAP上の受信トレイ名。通常は「INBOX」ですが、サービスによって異なる場合があります。<br>
+      「一覧取得」ボタンで利用可能なフォルダ名を取得できます。</div>
+    <div id="mailbox-list" class="mt-2"></div>
+  </div>
+{% block extra_js %}
+<script>
+document.getElementById('fetch-mailboxes').addEventListener('click', function() {
+  const host = document.getElementById('imap_host').value;
+  const port = document.getElementById('imap_port').value;
+  const user = document.getElementById('imap_user').value;
+  const password = document.getElementById('imap_password').value;
+  const use_ssl = document.getElementById('use_ssl').checked;
+  const btn = this;
+  btn.disabled = true;
+  btn.textContent = '取得中...';
+  fetch('/accounts/mailboxes', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `imap_host=${encodeURIComponent(host)}&imap_port=${encodeURIComponent(port)}&imap_user=${encodeURIComponent(user)}&imap_password=${encodeURIComponent(password)}&use_ssl=${use_ssl}`
+  })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.textContent = '一覧取得';
+      const list = document.getElementById('mailbox-list');
+      if (data.mailboxes && data.mailboxes.length) {
+        list.innerHTML = '<strong>利用可能なフォルダ:</strong><ul>' + data.mailboxes.map(m => `<li><a href="#" onclick="document.getElementById('mailbox_name').value='${m}';return false;">${m}</a></li>`).join('') + '</ul>';
+      } else {
+        list.innerHTML = '<span class="text-danger">取得できませんでした。IMAP設定を確認してください。</span>';
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.textContent = '一覧取得';
+      document.getElementById('mailbox-list').innerHTML = '<span class="text-danger">取得できませんでした。</span>';
+    });
+});
+</script>
+{% endblock %}
+
   <div class="col-12">
     <div class="form-check form-check-inline">
       <input type="checkbox" class="form-check-input" id="use_ssl" name="use_ssl"

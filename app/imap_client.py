@@ -38,6 +38,7 @@ def fetch_new_messages(
     password: str,
     use_ssl: bool,
     last_uid: int,
+    mailbox_name: str = "INBOX",
 ) -> List[MailMessage]:
     """
     Connect via IMAP, search for messages with UID > last_uid in INBOX,
@@ -52,7 +53,7 @@ def fetch_new_messages(
             conn = imaplib.IMAP4(host, port)
 
         conn.login(user, password)
-        conn.select("INBOX", readonly=True)
+        conn.select(mailbox_name, readonly=True)
 
         # Search for UIDs greater than last_uid
         search_criterion = f"UID {last_uid + 1}:*"

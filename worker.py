@@ -53,6 +53,7 @@ def process_account(account: Account, rules):
             password=account.imap_password,
             use_ssl=account.use_ssl,
             last_uid=account.last_uid,
+            mailbox_name=account.mailbox_name,
         )
     except Exception as exc:
         log = FailureLog(
