@@ -51,7 +51,9 @@ services:
     tty: true
     stdin_open: true
     volumes:
-      - ./volumes/protonmail-bridge:/root/.config/protonmail/bridge
+      - ./volumes/protonmail-config:/root/.config/protonmail
+      - ./volumes/protonmail-data:/root/.local/share/protonmail
+      - ./volumes/protonmail-cache:/root/.cache/protonmail
       - ./volumes/gnupg:/root/.gnupg
     network_mode: service:worker
     depends_on:
