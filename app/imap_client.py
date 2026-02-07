@@ -5,7 +5,7 @@ import email.header
 import imaplib
 import logging
 from dataclasses import dataclass
-from typing import List
+from typing import Iterator
 
 logger = logging.getLogger(__name__)
 
@@ -39,30 +39,30 @@ def fetch_new_messages(
     use_ssl: bool,
     last_uid: int,
     mailbox_name: str = "INBOX",
-) -> List[MailMessage]:
+) -> Iterator[MailMessage]:
     """
     Connect via IMAP, search for messages with UID > last_uid in INBOX,
     and return a list of MailMessage objects.
     """
-    messages: List[MailMessage] = []
-
     try:
+        messages: Iterator[MailMessage] = []
         if use_ssl:
             conn = imaplib.IMAP4_SSL(host, port)
         else:
             conn = imaplib.IMAP4(host, port)
 
         conn.login(user, password)
-        conn.select(mailbox_name, readonly=True)
+        status, _ = conn.select(mailbox_name, readonly=True)
+        if status != "OK":
+            raise RuntimeError(f"IMAPフォルダ選択に失敗しました: {mailbox_name}")
 
-        # Search for UIDs greater than last_uid
         search_criterion = f"UID {last_uid + 1}:*"
         status, data = conn.uid("search", None, search_criterion)
 
         if status != "OK" or not data[0]:
             conn.close()
             conn.logout()
-            return messages
+            return []
 
         uid_list = data[0].split()
 
@@ -85,9 +85,8 @@ def fetch_new_messages(
 
         conn.close()
         conn.logout()
+        return messages
 
     except Exception:
         logger.exception("IMAP fetch failed for %s@%s:%s", user, host, port)
         raise
-
-    return messages
