@@ -13,8 +13,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "0009"
-down_revision = "0008"
+revision = "0009_add_internaldate_cursor"
+down_revision = "0008_remove_condition_account_id"
 branch_labels = None
 depends_on = None
 
