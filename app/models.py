@@ -17,8 +17,10 @@ class Account(db.Model):
     use_ssl = db.Column(db.Boolean, nullable=False, default=True)
     ssl_mode = db.Column(db.String(20), nullable=False, default="ssl")  # "none", "starttls", "ssl"
     enabled = db.Column(db.Boolean, nullable=False, default=True)
-    last_uid = db.Column(db.Integer, nullable=False, default=0)
+    last_uid = db.Column(db.Integer, nullable=False, default=0)  # Deprecated: use last_processed_internal_date instead
     mailbox_name = db.Column(db.String(120), nullable=False, default="INBOX")
+    last_processed_internal_date = db.Column(db.DateTime, nullable=True)  # High-water mark for INTERNALDATE-based polling
+    processed_message_ids = db.Column(db.Text, nullable=False, default="")  # JSON array of Message-IDs for deduplication
     created_at = db.Column(
         db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
     )

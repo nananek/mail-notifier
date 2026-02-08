@@ -1,11 +1,15 @@
 """
 Mail Notifier Worker Daemon
 ──────────────────────────
-Periodically polls IMAP accounts, evaluates rules in position order
-(first‑match‑wins), sends Discord notifications, and logs failures.
-Controlled via the worker_state table (pause / resume / interval).
+Periodically polls IMAP accounts using INTERNALDATE-based cursor (high-water mark),
+evaluates rules in position order (first‑match‑wins), sends Discord notifications,
+and logs failures. Controlled via the worker_state table (pause / resume / interval).
+
+Deduplication: Uses Message-ID to avoid processing the same email multiple times
+(important for Proton Mail Bridge where labels = folders).
 """
 
+import json
 import logging
 import os
 import sys
@@ -30,6 +34,9 @@ logger = logging.getLogger("worker")
 # Default poll interval from env; overridden by DB value at runtime
 DEFAULT_INTERVAL = int(os.environ.get("POLL_INTERVAL", "60"))
 
+# Maximum number of Message-IDs to keep for deduplication (FIFO)
+MAX_MESSAGE_IDS = 1000
+
 
 def cleanup_old_logs():
     """Remove failure logs older than 30 days."""
@@ -41,11 +48,26 @@ def cleanup_old_logs():
 
 
 def process_account(account: Account):
-    """Fetch new mail for *account* and evaluate rules."""
+    """Fetch new mail for *account* and evaluate rules using INTERNALDATE cursor."""
     logger.info("Checking %s (%s@%s:%s)", account.name, account.imap_user, account.imap_host, account.imap_port)
 
     # Expire cached objects so we always read the latest notification formats
     db.session.expire_all()
+
+    # Initialize cursor if this is the first run
+    if account.last_processed_internal_date is None:
+        # Set cursor to current time (don't process existing emails on first run)
+        account.last_processed_internal_date = datetime.now(timezone.utc)
+        db.session.commit()
+        logger.info("初回実行: カーソルを現在時刻に初期化しました")
+        return
+
+    # Load deduplication cache
+    try:
+        processed_ids = json.loads(account.processed_message_ids) if account.processed_message_ids else []
+    except json.JSONDecodeError:
+        processed_ids = []
+        logger.warning("Message-ID cache parse error, resetting")
 
     try:
         messages = fetch_new_messages(
@@ -54,7 +76,7 @@ def process_account(account: Account):
             user=account.imap_user,
             password=account.imap_password,
             use_ssl=account.use_ssl,
-            last_uid=account.last_uid,
+            last_processed_date=account.last_processed_internal_date,
             mailbox_name=account.mailbox_name,
             ssl_mode=getattr(account, 'ssl_mode', None),
         )
@@ -67,23 +89,49 @@ def process_account(account: Account):
         db.session.commit()
         return
 
-    max_uid = account.last_uid
+    max_internal_date = account.last_processed_internal_date
+    processed_count = 0
+    skipped_count = 0
 
-    found = False
     for msg in messages:
-        found = True
-        logger.info("  New mail uid=%d from=%s subject=%s", msg.uid, msg.from_address, msg.subject)
+        # Deduplication: skip if Message-ID already processed
+        if msg.message_id and msg.message_id in processed_ids:
+            logger.debug("  Duplicate Message-ID %s, skipping", msg.message_id)
+            skipped_count += 1
+            continue
+
+        logger.info("  New mail internal_date=%s from=%s subject=%s", 
+                   msg.internal_date.isoformat(), msg.from_address, msg.subject)
+        
         evaluate_and_notify(account, msg)
+        processed_count += 1
 
-        if msg.uid > max_uid:
-            max_uid = msg.uid
+        # Update high-water mark
+        if msg.internal_date > max_internal_date:
+            max_internal_date = msg.internal_date
 
-    if not found:
+        # Add to deduplication cache
+        if msg.message_id:
+            processed_ids.append(msg.message_id)
+
+    if processed_count == 0 and skipped_count == 0:
         logger.debug("No new messages for %s", account.name)
         return
 
-    if max_uid > account.last_uid:
-        account.last_uid = max_uid
+    # Trim deduplication cache (FIFO)
+    if len(processed_ids) > MAX_MESSAGE_IDS:
+        processed_ids = processed_ids[-MAX_MESSAGE_IDS:]
+
+    # Update cursor and cache
+    if max_internal_date > account.last_processed_internal_date:
+        account.last_processed_internal_date = max_internal_date
+        account.processed_message_ids = json.dumps(processed_ids)
+        db.session.commit()
+        logger.info("Cursor updated to %s (%d processed, %d skipped)", 
+                   max_internal_date.isoformat(), processed_count, skipped_count)
+    elif processed_ids:
+        # Update cache even if cursor didn't move
+        account.processed_message_ids = json.dumps(processed_ids)
         db.session.commit()
 
 
