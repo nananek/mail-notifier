@@ -13,6 +13,10 @@ def create_app(config_class=Config):
     # Import models so Alembic can detect them
     from app import models  # noqa: F401
 
+    # Register custom template filters
+    from app.filters import register_filters
+    register_filters(app)
+
     # Register blueprints
     from app.routes.accounts import accounts_bp
     from app.routes.rules import rules_bp

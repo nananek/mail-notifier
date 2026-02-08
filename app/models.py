@@ -190,6 +190,7 @@ class WorkerState(db.Model):
     id = db.Column(db.Integer, primary_key=True, default=1)
     is_running = db.Column(db.Boolean, nullable=False, default=True)
     poll_interval = db.Column(db.Integer, nullable=False, default=60)
+    display_timezone = db.Column(db.String(50), nullable=False, default="UTC")  # IANA timezone name (e.g., "Asia/Tokyo", "UTC")
     updated_at = db.Column(
         db.DateTime,
         nullable=False,

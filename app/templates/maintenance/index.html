@@ -48,6 +48,27 @@
         </button>
       </div>
     </form>
+
+    <hr>
+
+    <form method="post" action="{{ url_for('maintenance.set_timezone') }}"
+          class="row g-2 align-items-end" style="max-width:400px">
+      <div class="col">
+        <label for="display_timezone" class="form-label">表示タイムゾーン</label>
+        <select class="form-select" id="display_timezone" name="display_timezone">
+          <option value="UTC" {% if state and state.display_timezone == 'UTC' %}selected{% endif %}>UTC</option>
+          <option value="Asia/Tokyo" {% if state and state.display_timezone == 'Asia/Tokyo' %}selected{% endif %}>Asia/Tokyo (JST)</option>
+          <option value="America/New_York" {% if state and state.display_timezone == 'America/New_York' %}selected{% endif %}>America/New_York (EST)</option>
+          <option value="Europe/London" {% if state and state.display_timezone == 'Europe/London' %}selected{% endif %}>Europe/London (GMT)</option>
+          <option value="America/Los_Angeles" {% if state and state.display_timezone == 'America/Los_Angeles' %}selected{% endif %}>America/Los_Angeles (PST)</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary">
+          <i class="bi bi-check-lg"></i> 設定
+        </button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -88,7 +109,7 @@
         <tbody>
           {% for log in logs %}
           <tr>
-            <td class="text-nowrap small">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td class="text-nowrap small">{{ log.created_at|format_datetime_tz('%Y-%m-%d %H:%M:%S') }}</td>
             <td>{{ log.account.name if log.account else '-' }}</td>
             <td>{{ log.rule.name if log.rule else '-' }}</td>
             <td class="small">{{ log.from_address or '-' }}</td>

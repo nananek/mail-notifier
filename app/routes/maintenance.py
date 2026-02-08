@@ -41,6 +41,19 @@ def set_interval():
     return redirect(url_for("maintenance.index"))
 
 
+@maintenance_bp.route("/worker/timezone", methods=["POST"])
+def set_timezone():
+    state = WorkerState.query.get(1)
+    if state is None:
+        state = WorkerState(id=1, is_running=True, poll_interval=60)
+        db.session.add(state)
+    timezone_name = request.form.get("display_timezone", "UTC")
+    state.display_timezone = timezone_name
+    db.session.commit()
+    flash(f"表示タイムゾーンを {timezone_name} に設定しました。", "success")
+    return redirect(url_for("maintenance.index"))
+
+
 @maintenance_bp.route("/logs/clear", methods=["POST"])
 def clear_logs():
     FailureLog.query.delete()
