@@ -132,26 +132,46 @@ def fetch_new_messages(
 
             # Fetch INTERNALDATE and headers
             status, msg_data = conn.uid("fetch", uid_bytes, "(INTERNALDATE RFC822.HEADER)")
-            if status != "OK" or not msg_data or len(msg_data) < 2:
+            if status != "OK" or not msg_data or not msg_data[0]:
+                logger.warning("UID %d: fetch failed or empty response", uid)
                 continue
 
             # Parse INTERNALDATE from response
-            # Example: b'1 (INTERNALDATE "08-Feb-2026 12:34:56 +0000" RFC822.HEADER {1234}'
-            fetch_response = msg_data[0]
-            if isinstance(fetch_response, tuple):
-                fetch_response = fetch_response[0]
-            
+            # msg_data structure: [(b'123 (INTERNALDATE "..." RFC822.HEADER {size}', b'header data'), b')']
+            # or: [(b'123 (INTERNALDATE "..." RFC822.HEADER {size}', b'header data')]
             internal_date_str = None
-            if isinstance(fetch_response, bytes):
-                fetch_str = fetch_response.decode('utf-8', errors='ignore')
-                # Extract INTERNALDATE using regex
+            raw_header = None
+            
+            # Extract from first element (which is usually a tuple)
+            first_elem = msg_data[0]
+            if isinstance(first_elem, tuple) and len(first_elem) >= 2:
+                # Standard format: (metadata_bytes, header_bytes)
+                metadata = first_elem[0]
+                raw_header = first_elem[1]
+                
+                if isinstance(metadata, bytes):
+                    metadata_str = metadata.decode('utf-8', errors='ignore')
+                    import re
+                    match = re.search(r'INTERNALDATE "([^"]+)"', metadata_str)
+                    if match:
+                        internal_date_str = match.group(1)
+            elif isinstance(first_elem, bytes):
+                # Fallback: try to parse from bytes directly
+                metadata_str = first_elem.decode('utf-8', errors='ignore')
                 import re
-                match = re.search(r'INTERNALDATE "([^"]+)"', fetch_str)
+                match = re.search(r'INTERNALDATE "([^"]+)"', metadata_str)
                 if match:
                     internal_date_str = match.group(1)
+                # Try to get header from next element
+                if len(msg_data) > 1 and isinstance(msg_data[1], bytes):
+                    raw_header = msg_data[1]
             
             if not internal_date_str:
-                logger.warning("UID %d: INTERNALDATE not found, skipping", uid)
+                logger.warning("UID %d: INTERNALDATE not found in response", uid)
+                continue
+            
+            if not raw_header:
+                logger.warning("UID %d: header data not found in response", uid)
                 continue
             
             internal_date = parse_internal_date(internal_date_str)
@@ -162,7 +182,6 @@ def fetch_new_messages(
                 continue
 
             # Parse message headers
-            raw_header = msg_data[1] if len(msg_data) > 1 else msg_data[0][1]
             msg = email.message_from_bytes(raw_header)
 
             from_addr = decode_header_value(msg.get("From", ""))
