@@ -136,9 +136,15 @@ def fetch_new_messages(
                 logger.warning("UID %d: fetch failed or empty response", uid)
                 continue
 
+            # Debug: log the raw response structure
+            logger.debug("UID %d: msg_data type=%s, len=%d", uid, type(msg_data), len(msg_data))
+            if msg_data and len(msg_data) > 0:
+                logger.debug("UID %d: msg_data[0] type=%s", uid, type(msg_data[0]))
+
             # Parse INTERNALDATE from response
-            # msg_data structure: [(b'123 (INTERNALDATE "..." RFC822.HEADER {size}', b'header data'), b')']
-            # or: [(b'123 (INTERNALDATE "..." RFC822.HEADER {size}', b'header data')]
+            # msg_data structure varies by server:
+            # Gmail: [(b'123 (RFC822.HEADER {size}', b'header data'), b')']
+            # Others: [(b'123 (INTERNALDATE "..." RFC822.HEADER {size}', b'header data')]
             internal_date_str = None
             raw_header = None
             
@@ -151,6 +157,7 @@ def fetch_new_messages(
                 
                 if isinstance(metadata, bytes):
                     metadata_str = metadata.decode('utf-8', errors='ignore')
+                    logger.debug("UID %d: metadata=%s", uid, metadata_str[:200])
                     import re
                     match = re.search(r'INTERNALDATE "([^"]+)"', metadata_str)
                     if match:
@@ -158,6 +165,7 @@ def fetch_new_messages(
             elif isinstance(first_elem, bytes):
                 # Fallback: try to parse from bytes directly
                 metadata_str = first_elem.decode('utf-8', errors='ignore')
+                logger.debug("UID %d: metadata (bytes)=%s", uid, metadata_str[:200])
                 import re
                 match = re.search(r'INTERNALDATE "([^"]+)"', metadata_str)
                 if match:
@@ -166,13 +174,22 @@ def fetch_new_messages(
                 if len(msg_data) > 1 and isinstance(msg_data[1], bytes):
                     raw_header = msg_data[1]
             
-            if not internal_date_str:
-                logger.warning("UID %d: INTERNALDATE not found in response", uid)
-                continue
-            
             if not raw_header:
                 logger.warning("UID %d: header data not found in response", uid)
                 continue
+            
+            # Parse message headers first
+            msg = email.message_from_bytes(raw_header)
+            
+            # If INTERNALDATE not found, fall back to Date header
+            if not internal_date_str:
+                date_header = msg.get("Date", "")
+                logger.debug("UID %d: INTERNALDATE not found, using Date header: %s", uid, date_header)
+                if date_header:
+                    internal_date_str = date_header
+                else:
+                    logger.warning("UID %d: Neither INTERNALDATE nor Date header found, skipping", uid)
+                    continue
             
             internal_date = parse_internal_date(internal_date_str)
             
@@ -180,9 +197,6 @@ def fetch_new_messages(
             if internal_date <= last_processed_date:
                 logger.debug("UID %d: internal_date %s <= cursor, skipping", uid, internal_date.isoformat())
                 continue
-
-            # Parse message headers
-            msg = email.message_from_bytes(raw_header)
 
             from_addr = decode_header_value(msg.get("From", ""))
             to_addr = decode_header_value(msg.get("To", ""))
