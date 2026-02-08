@@ -62,6 +62,12 @@ def process_account(account: Account):
         logger.info("初回実行: カーソルを現在時刻に初期化しました")
         return
 
+    # Ensure cursor is timezone-aware (convert from DB if needed)
+    cursor = account.last_processed_internal_date
+    if cursor.tzinfo is None:
+        cursor = cursor.replace(tzinfo=timezone.utc)
+        logger.debug("Converted naive cursor to UTC-aware")
+
     # Load deduplication cache
     try:
         processed_ids = json.loads(account.processed_message_ids) if account.processed_message_ids else []
@@ -76,7 +82,7 @@ def process_account(account: Account):
             user=account.imap_user,
             password=account.imap_password,
             use_ssl=account.use_ssl,
-            last_processed_date=account.last_processed_internal_date,
+            last_processed_date=cursor,
             mailbox_name=account.mailbox_name,
             ssl_mode=getattr(account, 'ssl_mode', None),
         )
@@ -89,7 +95,7 @@ def process_account(account: Account):
         db.session.commit()
         return
 
-    max_internal_date = account.last_processed_internal_date
+    max_internal_date = cursor
     processed_count = 0
     skipped_count = 0
 
@@ -123,7 +129,7 @@ def process_account(account: Account):
         processed_ids = processed_ids[-MAX_MESSAGE_IDS:]
 
     # Update cursor and cache
-    if max_internal_date > account.last_processed_internal_date:
+    if max_internal_date > cursor:
         account.last_processed_internal_date = max_internal_date
         account.processed_message_ids = json.dumps(processed_ids)
         db.session.commit()
