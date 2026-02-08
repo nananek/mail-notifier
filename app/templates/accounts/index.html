@@ -19,7 +19,7 @@
         <th>ユーザー</th>
         <th>SSL</th>
         <th>状態</th>
-        <th>Last UID</th>
+        <th>最終処理日時</th>
         <th style="width:160px"></th>
       </tr>
     </thead>
@@ -43,7 +43,13 @@
             <span class="badge bg-secondary">無効</span>
           {% endif %}
         </td>
-        <td><code>{{ a.last_uid }}</code></td>
+        <td>
+          {% if a.last_processed_internal_date %}
+            <small class="text-muted">{{ a.last_processed_internal_date.strftime('%Y-%m-%d %H:%M') }} UTC</small>
+          {% else %}
+            <span class="badge bg-secondary">未初期化</span>
+          {% endif %}
+        </td>
         <td class="text-end">
           <form method="post" action="{{ url_for('accounts.receive_now', account_id=a.id) }}" class="d-inline">
             <button class="btn btn-sm btn-success me-1">
