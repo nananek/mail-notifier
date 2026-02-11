@@ -15,7 +15,7 @@
     <thead class="table-light">
       <tr>
         <th>名前</th>
-        <th>IMAPサーバー</th>
+        <th>サーバー</th>
         <th>ユーザー</th>
         <th>SSL</th>
         <th>状態</th>
@@ -27,7 +27,10 @@
       {% for a in accounts %}
       <tr>
         <td>{{ a.name }}</td>
-        <td>{{ a.imap_host }}:{{ a.imap_port }}</td>
+        <td>
+          <span class="badge bg-info me-1">{{ (a.protocol_type or 'imap')|upper }}</span>
+          {{ a.imap_host }}:{{ a.imap_port }}
+        </td>
         <td>{{ a.imap_user }}</td>
         <td>
           {% if a.use_ssl %}

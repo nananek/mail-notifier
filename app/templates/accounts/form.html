@@ -16,8 +16,24 @@
            placeholder="例: Gmail / Proton Mail">
   </div>
 
+  <div class="col-12">
+    <label class="form-label">プロトコル</label>
+    <div class="form-check form-check-inline">
+      <input type="radio" class="form-check-input" id="protocol_imap" name="protocol_type"
+             value="imap" {% if not account or account.protocol_type == 'imap' %}checked{% endif %}
+             onchange="toggleProtocol()">
+      <label class="form-check-label" for="protocol_imap">IMAP</label>
+    </div>
+    <div class="form-check form-check-inline">
+      <input type="radio" class="form-check-input" id="protocol_pop3" name="protocol_type"
+             value="pop3" {% if account and account.protocol_type == 'pop3' %}checked{% endif %}
+             onchange="toggleProtocol()">
+      <label class="form-check-label" for="protocol_pop3">POP3</label>
+    </div>
+  </div>
+
   <div class="col-md-8">
-    <label for="imap_host" class="form-label">IMAPホスト</label>
+    <label for="imap_host" class="form-label" id="host_label">メールサーバー</label>
     <input type="text" class="form-control" id="imap_host" name="imap_host" required
            value="{{ account.imap_host if account else '' }}"
            placeholder="例: imap.gmail.com / 127.0.0.1">
@@ -44,7 +60,7 @@
     {% endif %}
   </div>
 
-  <div class="col-md-6">
+  <div class="col-md-6" id="mailbox_section">
     <label for="mailbox_name" class="form-label">受信トレイ名</label>
     <div class="input-group">
       <input type="text" class="form-control" id="mailbox_name" name="mailbox_name" required
@@ -62,13 +78,13 @@
   <div class="col-md-6">
     <label for="ssl_mode" class="form-label">SSL/TLS接続方法</label>
     <select class="form-select" id="ssl_mode" name="ssl_mode">
-      <option value="ssl" {% if not account or account.ssl_mode == 'ssl' %}selected{% endif %}>暗黙的SSL (ポート993)</option>
+      <option value="ssl" {% if not account or account.ssl_mode == 'ssl' %}selected{% endif %}>暗黙的SSL (ポート993/995)</option>
       <option value="starttls" {% if account and account.ssl_mode == 'starttls' %}selected{% endif %}>STARTTLS (Proton Bridge等)</option>
       <option value="none" {% if account and account.ssl_mode == 'none' %}selected{% endif %}>暗号化なし</option>
     </select>
     <div class="form-text">
-      ・暗黙的SSL: 標準的なIMAPS (通常ポート993)<br>
-      ・STARTTLS: Proton Mail Bridge等で使用 (通常ポート1143)<br>
+      ・暗黙的SSL: IMAPS (993) / POP3S (995)<br>
+      ・STARTTLS: Proton Mail Bridge等で使用<br>
       ・暗号化なし: 平文接続（非推奨）
     </div>
   </div>
@@ -80,13 +96,14 @@ document.getElementById('fetch-mailboxes').addEventListener('click', function() 
   const user = document.getElementById('imap_user').value;
   const password = document.getElementById('imap_password').value;
   const ssl_mode = document.getElementById('ssl_mode').value;
+  const protocol_type = document.querySelector('input[name="protocol_type"]:checked').value;
   const btn = this;
   btn.disabled = true;
   btn.textContent = '取得中...';
   fetch('/accounts/mailboxes', {
     method: 'POST',
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: `imap_host=${encodeURIComponent(host)}&imap_port=${encodeURIComponent(port)}&imap_user=${encodeURIComponent(user)}&imap_password=${encodeURIComponent(password)}&ssl_mode=${encodeURIComponent(ssl_mode)}`
+    body: `protocol_type=${encodeURIComponent(protocol_type)}&imap_host=${encodeURIComponent(host)}&imap_port=${encodeURIComponent(port)}&imap_user=${encodeURIComponent(user)}&imap_password=${encodeURIComponent(password)}&ssl_mode=${encodeURIComponent(ssl_mode)}`
   })
     .then(r => r.json())
     .then(data => {
@@ -96,7 +113,7 @@ document.getElementById('fetch-mailboxes').addEventListener('click', function() 
       if (data.mailboxes && data.mailboxes.length) {
         list.innerHTML = '<strong>利用可能なフォルダ:</strong><ul>' + data.mailboxes.map(m => `<li><a href="#" onclick="document.getElementById('mailbox_name').value='${m}';return false;">${m}</a></li>`).join('') + '</ul>';
       } else {
-        list.innerHTML = '<span class="text-danger">取得できませんでした。IMAP設定を確認してください。</span>';
+        list.innerHTML = '<span class="text-danger">取得できませんでした。設定を確認してください。</span>';
       }
     })
     .catch(() => {
@@ -105,6 +122,30 @@ document.getElementById('fetch-mailboxes').addEventListener('click', function() 
       document.getElementById('mailbox-list').innerHTML = '<span class="text-danger">取得できませんでした。</span>';
     });
 });
+
+function toggleProtocol() {
+  const isPop3 = document.getElementById('protocol_pop3').checked;
+  const mailboxSection = document.getElementById('mailbox_section');
+  const portInput = document.getElementById('imap_port');
+  const hostLabel = document.getElementById('host_label');
+
+  // Show/hide mailbox section
+  mailboxSection.style.display = isPop3 ? 'none' : '';
+
+  // Update host label
+  hostLabel.textContent = isPop3 ? 'POP3サーバー' : 'IMAPサーバー';
+
+  // Update default port if the current port is a known default
+  const currentPort = parseInt(portInput.value);
+  if (isPop3 && (currentPort === 993 || currentPort === 143)) {
+    portInput.value = 995;
+  } else if (!isPop3 && (currentPort === 995 || currentPort === 110)) {
+    portInput.value = 993;
+  }
+}
+
+// Run on page load to set initial state
+document.addEventListener('DOMContentLoaded', toggleProtocol);
 </script>
 {% endblock %}
 

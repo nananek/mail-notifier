@@ -4,12 +4,13 @@ from app.extensions import db
 
 
 class Account(db.Model):
-    """IMAP mail account (Proton Mail Bridge / Gmail)."""
+    """Mail account (IMAP or POP3)."""
 
     __tablename__ = "accounts"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
+    protocol_type = db.Column(db.String(10), nullable=False, default="imap")  # "imap" or "pop3"
     imap_host = db.Column(db.String(255), nullable=False)
     imap_port = db.Column(db.Integer, nullable=False, default=993)
     imap_user = db.Column(db.String(255), nullable=False)

@@ -18,6 +18,9 @@ def receive_now(account_id):
 
 @accounts_bp.route("/mailboxes", methods=["POST"])
 def fetch_mailboxes():
+    protocol_type = request.form.get("protocol_type", "imap")
+    if protocol_type == "pop3":
+        return {"mailboxes": ["INBOX"]}
     host = request.form.get("imap_host")
     port = int(request.form.get("imap_port", 993))
     user = request.form.get("imap_user")
@@ -37,8 +40,10 @@ def index():
 @accounts_bp.route("/new", methods=["GET", "POST"])
 def create():
     if request.method == "POST":
+        protocol_type = request.form.get("protocol_type", "imap")
         account = Account(
             name=request.form["name"],
+            protocol_type=protocol_type,
             imap_host=request.form["imap_host"],
             imap_port=int(request.form.get("imap_port", 993)),
             imap_user=request.form["imap_user"],
@@ -46,7 +51,7 @@ def create():
             use_ssl="use_ssl" in request.form,
             ssl_mode=request.form.get("ssl_mode", "ssl"),
             enabled="enabled" in request.form,
-            mailbox_name=request.form.get("mailbox_name", "INBOX"),
+            mailbox_name=request.form.get("mailbox_name", "INBOX") if protocol_type == "imap" else "INBOX",
         )
         db.session.add(account)
         db.session.commit()
@@ -59,7 +64,10 @@ def create():
 def edit(account_id):
     account = Account.query.get_or_404(account_id)
     if request.method == "POST":
+        old_protocol = account.protocol_type
+        new_protocol = request.form.get("protocol_type", "imap")
         account.name = request.form["name"]
+        account.protocol_type = new_protocol
         account.imap_host = request.form["imap_host"]
         account.imap_port = int(request.form.get("imap_port", 993))
         account.imap_user = request.form["imap_user"]
@@ -68,7 +76,14 @@ def edit(account_id):
         account.use_ssl = "use_ssl" in request.form
         account.ssl_mode = request.form.get("ssl_mode", "ssl")
         account.enabled = "enabled" in request.form
-        account.mailbox_name = request.form.get("mailbox_name", "INBOX")
+        if new_protocol == "imap":
+            account.mailbox_name = request.form.get("mailbox_name", "INBOX")
+        else:
+            account.mailbox_name = "INBOX"
+        # Reset cursor when protocol changes
+        if old_protocol != new_protocol:
+            account.last_processed_internal_date = None
+            account.processed_message_ids = ""
         db.session.commit()
         flash("アカウントを更新しました。", "success")
         return redirect(url_for("accounts.index"))

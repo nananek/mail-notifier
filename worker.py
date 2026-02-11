@@ -23,6 +23,7 @@ from app import create_app
 from app.extensions import db
 from app.models import Account, Rule, FailureLog, WorkerState, WorkerTrigger
 from app.imap_client import fetch_new_messages
+from app.pop3_client import fetch_new_messages as pop3_fetch_new_messages
 from app.notify import evaluate_and_notify
 
 logging.basicConfig(
@@ -49,7 +50,8 @@ def cleanup_old_logs():
 
 def process_account(account: Account):
     """Fetch new mail for *account* and evaluate rules using INTERNALDATE cursor."""
-    logger.info("Checking %s (%s@%s:%s)", account.name, account.imap_user, account.imap_host, account.imap_port)
+    protocol = getattr(account, 'protocol_type', 'imap') or 'imap'
+    logger.info("Checking %s (%s@%s:%s) [%s]", account.name, account.imap_user, account.imap_host, account.imap_port, protocol.upper())
 
     # Expire cached objects so we always read the latest notification formats
     db.session.expire_all()
@@ -76,20 +78,33 @@ def process_account(account: Account):
         logger.warning("Message-ID cache parse error, resetting")
 
     try:
-        messages = fetch_new_messages(
-            host=account.imap_host,
-            port=account.imap_port,
-            user=account.imap_user,
-            password=account.imap_password,
-            use_ssl=account.use_ssl,
-            last_processed_date=cursor,
-            mailbox_name=account.mailbox_name,
-            ssl_mode=getattr(account, 'ssl_mode', None),
-        )
+        if protocol == 'pop3':
+            processed_set = set(processed_ids)
+            messages = pop3_fetch_new_messages(
+                host=account.imap_host,
+                port=account.imap_port,
+                user=account.imap_user,
+                password=account.imap_password,
+                use_ssl=account.use_ssl,
+                last_processed_date=cursor,
+                ssl_mode=getattr(account, 'ssl_mode', None),
+                processed_uidls=processed_set,
+            )
+        else:
+            messages = fetch_new_messages(
+                host=account.imap_host,
+                port=account.imap_port,
+                user=account.imap_user,
+                password=account.imap_password,
+                use_ssl=account.use_ssl,
+                last_processed_date=cursor,
+                mailbox_name=account.mailbox_name,
+                ssl_mode=getattr(account, 'ssl_mode', None),
+            )
     except Exception as exc:
         log = FailureLog(
             account_id=account.id,
-            error_message=f"IMAP error: {exc}",
+            error_message=f"{protocol.upper()} error: {exc}",
         )
         db.session.add(log)
         db.session.commit()
